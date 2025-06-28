@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { registerSW, requestNotificationPermission } from './hooks/usePWA';
+import PWAInstallButton, { OfflineIndicator, PWAFeatures, InstallPrompt } from './components/PWAInstallButton';
 
 // Floating elements component
 const FloatingElements = () => {
@@ -73,13 +75,31 @@ const TrustIndicators = () => {
 // Main welcome screen component
 const WelcomeScreen = ({ onStart }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
     setIsLoaded(true);
+    
+    // Show install prompt after 3 seconds
+    const timer = setTimeout(() => {
+      setShowInstallPrompt(true);
+    }, 3000);
+
+    // Request notification permission on load
+    requestNotificationPermission().then(granted => {
+      if (granted) {
+        console.log('VisaQuest: Notification permission granted');
+      }
+    });
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
+      {/* Offline indicator */}
+      <OfflineIndicator />
+      
       {/* Hero Section */}
       <div className="gradient-hero text-white text-center relative h-screen flex flex-col">
         <FloatingElements />
@@ -135,6 +155,12 @@ const WelcomeScreen = ({ onStart }) => {
           🚀 ¡Comenzar Mi Visa GRATIS!
         </button>
         
+        {/* PWA Install Button */}
+        <div className={`mb-6 flex justify-center ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
+             style={{ animationDelay: '0.7s' }}>
+          <PWAInstallButton />
+        </div>
+        
         {/* Secondary options */}
         <div className={`space-y-3 mb-6 ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
              style={{ animationDelay: '0.8s' }}>
@@ -146,34 +172,73 @@ const WelcomeScreen = ({ onStart }) => {
           </button>
         </div>
         
+        {/* PWA Features showcase */}
+        <div className={`mb-6 ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
+             style={{ animationDelay: '0.9s' }}>
+          <PWAFeatures />
+        </div>
+        
         {/* Trust indicators */}
         <div style={{ animationDelay: '1s' }}>
           <TrustIndicators />
         </div>
       </div>
+      
+      {/* Install prompt */}
+      {showInstallPrompt && (
+        <InstallPrompt onDismiss={() => setShowInstallPrompt(false)} />
+      )}
     </div>
   );
 };
 
-// Temporary dashboard placeholder
+// Enhanced dashboard with PWA features
 const Dashboard = ({ onBack }) => {
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-md mx-auto">
-        <div className="bg-white rounded-2xl p-6 shadow-lg text-center">
-          <div className="text-4xl mb-4">🎉</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            ¡Bienvenida a VisaQuest!
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Esta será tu pantalla principal donde verás tu progreso, tareas diarias y más.
-          </p>
-          <button 
-            onClick={onBack}
-            className="bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
-          >
-            ← Volver al Inicio
-          </button>
+    <div className="min-h-screen bg-gray-50">
+      <OfflineIndicator />
+      
+      <div className="p-6">
+        <div className="max-w-md mx-auto">
+          <div className="bg-white rounded-2xl p-6 shadow-lg text-center mb-6">
+            <div className="text-4xl mb-4">🎉</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              ¡Bienvenida a VisaQuest!
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Esta será tu pantalla principal donde verás tu progreso, tareas diarias y más.
+            </p>
+            
+            {/* PWA Status indicators */}
+            <div className="bg-blue-50 rounded-xl p-4 mb-6">
+              <h3 className="font-semibold text-blue-800 mb-3">📱 Estado de la App</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center justify-center space-x-2 p-2 bg-white rounded-lg">
+                  <span>🔄</span>
+                  <span>Offline Ready</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2 p-2 bg-white rounded-lg">
+                  <span>🔔</span>
+                  <span>Notificaciones</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2 p-2 bg-white rounded-lg">
+                  <span>📸</span>
+                  <span>Cámara</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2 p-2 bg-white rounded-lg">
+                  <span>📱</span>
+                  <span>App Nativa</span>
+                </div>
+              </div>
+            </div>
+            
+            <button 
+              onClick={onBack}
+              className="bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+            >
+              ← Volver al Inicio
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -183,6 +248,17 @@ const Dashboard = ({ onBack }) => {
 // Main App component
 function App() {
   const [currentScreen, setCurrentScreen] = useState('welcome');
+
+  // Initialize PWA features
+  useEffect(() => {
+    // Register service worker
+    registerSW();
+    
+    // Set up app shortcuts if installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('VisaQuest: Running as installed PWA');
+    }
+  }, []);
 
   const handleStart = () => {
     setCurrentScreen('dashboard');
