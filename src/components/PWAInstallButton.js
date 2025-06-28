@@ -2,7 +2,7 @@ import React from 'react';
 import { usePWA } from '../hooks/usePWA';
 
 const PWAInstallButton = ({ className = '' }) => {
-  const { isInstallable, isInstalled, installApp, isOnline } = usePWA();
+  const { isInstallable, isInstalled, installApp } = usePWA();
 
   // Don't show button if already installed or not installable
   if (isInstalled || !isInstallable) {
