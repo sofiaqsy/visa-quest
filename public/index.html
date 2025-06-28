@@ -7,14 +7,74 @@
     <meta name="theme-color" content="#667eea" />
     <meta
       name="description"
-      content="VisaQuest - Tu guía gamificada para obtener visas de manera fácil y motivacional"
+      content="VisaQuest - Tu guía gamificada para obtener visas de manera fácil y motivacional. Convierte el proceso de visa en una aventura paso a paso."
     />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="VisaQuest">
+    <meta name="application-name" content="VisaQuest">
+    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="msapplication-config" content="%PUBLIC_URL%/browserconfig.xml">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://visa-quest.app/">
+    <meta property="og:title" content="VisaQuest - Tu visa a Canadá en 21 días">
+    <meta property="og:description" content="Guía gamificada para obtener tu visa de turismo a Canadá. Sin estrés, sin confusión, sin rechazos.">
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://visa-quest.app/">
+    <meta property="twitter:title" content="VisaQuest - Tu visa a Canadá en 21 días">
+    <meta property="twitter:description" content="Guía gamificada para obtener tu visa de turismo a Canadá. Sin estrés, sin confusión, sin rechazos.">
+    <meta property="twitter:image" content="%PUBLIC_URL%/twitter-image.png">
+    
+    <!-- Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/favicon-16x16.png">
+    <link rel="mask-icon" href="%PUBLIC_URL%/safari-pinned-tab.svg" color="#667eea">
+    
+    <!-- Manifest -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Security -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    
     <title>VisaQuest - Tu aventura hacia Canadá</title>
   </head>
   <body>
-    <noscript>Necesitas habilitar JavaScript para ejecutar esta app.</noscript>
+    <noscript>
+      <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
+        <h2>🚫 JavaScript Requerido</h2>
+        <p>VisaQuest necesita JavaScript para funcionar correctamente.</p>
+        <p>Por favor, habilita JavaScript en tu navegador e intenta nuevamente.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
+    
+    <!-- Register Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('VisaQuest: SW registered successfully');
+            })
+            .catch(function(error) {
+              console.log('VisaQuest: SW registration failed');
+            });
+        });
+      }
+    </script>
   </body>
 </html>
