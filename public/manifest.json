@@ -1,0 +1,74 @@
+{
+  "short_name": "VisaQuest",
+  "name": "VisaQuest - Tu aventura hacia Canadá",
+  "description": "Tu guía gamificada para obtener visas de manera fácil y motivacional",
+  "icons": [
+    {
+      "src": "icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#667eea",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["travel", "productivity", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "screenshot-mobile.png",
+      "sizes": "375x812",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mi Progreso",
+      "short_name": "Progreso",
+      "description": "Ver mi progreso actual en la visa",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Tareas de Hoy",
+      "short_name": "Tareas",
+      "description": "Ver mis tareas pendientes de hoy",
+      "url": "/tasks",
+      "icons": [
+        {
+          "src": "icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Comunidad",
+      "short_name": "Comunidad",
+      "description": "Conectar con otros viajeros",
+      "url": "/community",
+      "icons": [
+        {
+          "src": "icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "lang": "es",
+  "dir": "ltr"
+}
