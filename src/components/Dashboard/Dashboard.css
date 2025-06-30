@@ -437,61 +437,6 @@
   height: 48px;
 }
 
-/* Swipe Indicators */
-.swipe-indicators {
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
-  pointer-events: none;
-}
-
-.swipe-indicator {
-  width: 40px;
-  height: 40px;
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.swipe-indicator.active {
-  opacity: 0.5;
-}
-
-.swipe-arrow {
-  color: white;
-  font-size: 18px;
-  font-weight: bold;
-  animation: arrow-bounce 1.5s ease-in-out infinite;
-}
-
-.swipe-up .swipe-arrow {
-  animation-name: arrow-bounce-up;
-}
-
-.swipe-down .swipe-arrow {
-  animation-name: arrow-bounce-down;
-}
-
-@keyframes arrow-bounce-up {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-@keyframes arrow-bounce-down {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(3px); }
-}
-
 /* Tab Bar */
 .tab-bar {
   position: fixed;
@@ -586,19 +531,6 @@
     right: 12px;
     width: 32px;
     height: 32px;
-  }
-  
-  .swipe-indicators {
-    right: 12px;
-  }
-  
-  .swipe-indicator {
-    width: 32px;
-    height: 32px;
-  }
-  
-  .swipe-arrow {
-    font-size: 16px;
   }
 }
 
