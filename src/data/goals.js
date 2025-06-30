@@ -56,7 +56,6 @@ export const isWeekend = () => {
 // Check if it's work hours
 export const isWorkHours = () => {
   const hour = new Date().getHours();
-  const day = new Date().getDay();
   
   // Monday to Friday, 9 AM to 6 PM
   return !isWeekend() && hour >= 9 && hour < 18;
@@ -64,7 +63,6 @@ export const isWorkHours = () => {
 
 // Get contextual greeting based on time
 export const getContextualGreeting = () => {
-  const hour = new Date().getHours();
   const timeContext = getCurrentTimeContext();
   
   const greetings = {
@@ -348,8 +346,6 @@ export const getContextualTips = (category, timeContext) => {
 
 // Smart task distribution algorithm
 export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferences = {}) => {
-  const currentTime = new Date();
-  const hour = currentTime.getHours();
   const timeContext = getCurrentTimeContext();
   const isWorkTime = isWorkHours();
   
