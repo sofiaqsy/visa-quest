@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginForm from './components/Auth/LoginForm';
+import Dashboard from './components/Dashboard/Dashboard';
 import { registerSW, requestNotificationPermission } from './hooks/usePWA';
 import PWAInstallButton, { OfflineIndicator, InstallPrompt } from './components/PWAInstallButton';
 import { moodService, userService, analyticsService } from './firebase/services';
@@ -378,159 +379,6 @@ const WelcomeScreen = ({ onStart }) => {
   }
 };
 
-// Enhanced dashboard with daily mood check
-const Dashboard = ({ onBack }) => {
-  const { currentUser, logout, isGuest } = useAuth();
-  const [userName] = useState(localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Viajera');
-  const [todayMood, setTodayMood] = useState(null);
-  const [needsMoodCheck, setNeedsMoodCheck] = useState(false);
-  const [moodStreak, setMoodStreak] = useState(0);
-
-  useEffect(() => {
-    // Check if we have today's mood
-    const checkTodayMood = async () => {
-      const saved = localStorage.getItem('visa-quest-daily-mood');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const today = new Date().toDateString();
-        
-        if (parsed.date === today) {
-          setTodayMood(parsed);
-          
-          // Get mood statistics from Firebase
-          const stats = await moodService.getMoodStats(currentUser?.uid);
-          if (stats) {
-            setMoodStreak(stats.currentStreak);
-          }
-        } else {
-          // Need to ask for today's mood
-          setNeedsMoodCheck(true);
-        }
-      } else {
-        // First time, need mood
-        setNeedsMoodCheck(true);
-      }
-    };
-    
-    checkTodayMood();
-    
-    // Track dashboard view
-    analyticsService.trackAction(currentUser?.uid, 'dashboard_view');
-  }, [currentUser]);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
-
-  // If needs mood check, redirect to welcome screen
-  if (needsMoodCheck) {
-    return <Navigate to="/" />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <OfflineIndicator />
-      
-      <div className="p-6">
-        <div className="max-w-md mx-auto">
-          
-          {/* User profile header */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              {currentUser?.photoURL ? (
-                <img src={currentUser.photoURL} alt={userName} className="w-10 h-10 rounded-full" />
-              ) : (
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-bold">
-                  {userName.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div>
-                <p className="text-sm text-gray-600">
-                  {isGuest ? 'Modo invitado' : 'Hola,'}
-                </p>
-                <p className="font-semibold text-gray-800">{userName}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              {isGuest ? (
-                <a 
-                  href="/login" 
-                  className="text-sm text-blue-600 hover:text-blue-700"
-                >
-                  Crear cuenta
-                </a>
-              ) : (
-                <button 
-                  onClick={handleLogout}
-                  className="text-sm text-gray-500 hover:text-gray-700"
-                >
-                  Cerrar sesión
-                </button>
-              )}
-            </div>
-          </div>
-          
-          {/* Guest mode notice */}
-          {isGuest && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
-              <p className="text-sm text-yellow-800">
-                <strong>Modo invitado:</strong> Tu progreso se guardará localmente. 
-                <a href="/login" className="text-yellow-900 underline ml-1">
-                  Crea una cuenta
-                </a> para sincronizar tu progreso en todos tus dispositivos.
-              </p>
-            </div>
-          )}
-          
-          {/* Mood streak indicator */}
-          {moodStreak > 0 && (
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-4 mb-4 text-center">
-              <div className="text-3xl mb-1">🔥</div>
-              <p className="text-lg font-bold">¡{moodStreak} días seguidos!</p>
-              <p className="text-sm opacity-90">Mantén tu racha registrando tu estado de ánimo diario</p>
-            </div>
-          )}
-          
-          {/* Warm daily greeting */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg text-center mb-6">
-            <div className="text-4xl mb-4">🌅</div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              ¡Buenos días, {userName}!
-            </h2>
-            
-            {todayMood && (
-              <div className="bg-blue-50 rounded-xl p-4 mb-4">
-                <div className="flex items-center justify-center space-x-2 mb-2">
-                  <span className="text-2xl">{todayMood.emoji}</span>
-                  <span className="font-semibold text-blue-800">{todayMood.label}</span>
-                </div>
-                <p className="text-sm text-blue-700">
-                  {todayMood.message}
-                </p>
-              </div>
-            )}
-            
-            <p className="text-gray-600 mb-6">
-              Aquí comenzará tu dashboard personalizado con tu progreso, tareas del día y apoyo continuo.
-            </p>
-            
-            <button 
-              onClick={onBack}
-              className="bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
-            >
-              ← Volver al inicio
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Main App component
 function App() {
   const [currentScreen, setCurrentScreen] = useState('welcome');
@@ -549,6 +397,30 @@ function App() {
   };
 
   const AppContent = () => {
+    const [needsMoodCheck, setNeedsMoodCheck] = useState(false);
+
+    useEffect(() => {
+      // Check if we need mood check
+      const checkMood = () => {
+        const savedMood = localStorage.getItem('visa-quest-daily-mood');
+        if (savedMood) {
+          const parsed = JSON.parse(savedMood);
+          const today = new Date().toDateString();
+          
+          if (parsed.date !== today && localStorage.getItem('visa-quest-has-seen-welcome')) {
+            setNeedsMoodCheck(true);
+          }
+        }
+      };
+      
+      checkMood();
+    }, []);
+
+    // If needs mood check, redirect to welcome
+    if (needsMoodCheck) {
+      return <Navigate to="/" />;
+    }
+
     return (
       <Router>
         <Routes>
@@ -556,7 +428,7 @@ function App() {
           
           <Route path="/dashboard" element={
             <ProtectedRoute>
-              <Dashboard onBack={handleBack} />
+              <Dashboard />
             </ProtectedRoute>
           } />
           
