@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { progressService, analyticsService } from '../../firebase/services';
-import { CheckCircle, Circle, ChevronUp, ChevronDown, Sparkles, BookOpen, RefreshCw, User, Home, Trophy } from 'lucide-react';
+import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy } from 'lucide-react';
 import './Dashboard.css';
 
 // Card types for different activities
@@ -140,14 +140,43 @@ const getDailyTips = (dayNumber) => {
   return tips[dayNumber % tips.length];
 };
 
-// Motivational quotes that rotate
-const motivationalQuotes = [
-  "Cada documento es un paso más cerca de tu sueño canadiense 🇨🇦",
-  "El viaje de mil millas comienza con un solo paso ✨",
-  "Tu futuro en Canadá está más cerca de lo que piensas 🌟",
-  "Hoy es el día perfecto para avanzar hacia tus metas 🚀",
-  "Confía en el proceso, todo saldrá bien 💝"
-];
+// Motivational quotes based on mood
+const getMotivationalQuotes = (mood) => {
+  const quotesByMood = {
+    good: [
+      "¡Tu energía positiva te llevará lejos! 🌟",
+      "Con esa actitud, Canadá está más cerca que nunca 🇨🇦",
+      "Tu entusiasmo hace todo más fácil ✨"
+    ],
+    okay: [
+      "Paso a paso llegarás a tu meta 🚶‍♀️",
+      "Cada pequeño avance cuenta 💪",
+      "Tu constancia te llevará a Canadá 🍁"
+    ],
+    overwhelmed: [
+      "Respira, vamos juntas en esto 💙",
+      "Un documento a la vez, sin prisa 🌸",
+      "Tu bienestar es lo más importante 🤗"
+    ],
+    confused: [
+      "Todo se aclarará paso a paso 🔍",
+      "Estoy aquí para guiarte en cada duda 💡",
+      "Juntas organizaremos todo perfectamente 📋"
+    ],
+    anxious: [
+      "Respira profundo, todo saldrá bien 🧘‍♀️",
+      "Tu paz mental es prioridad 🕊️",
+      "Vamos con calma, sin presiones 💜"
+    ],
+    default: [
+      "Cada documento es un paso más cerca de tu sueño canadiense 🇨🇦",
+      "El viaje de mil millas comienza con un solo paso ✨",
+      "Tu futuro en Canadá está más cerca de lo que piensas 🌟"
+    ]
+  };
+  
+  return quotesByMood[mood] || quotesByMood.default;
+};
 
 // Get all cards for a day
 const getDailyCards = (dayNumber, completedTasks) => {
@@ -182,39 +211,19 @@ const getDailyCards = (dayNumber, completedTasks) => {
   return cards;
 };
 
-// Helper function for time greeting
-const getTimeOfDayGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Buenos días";
-  if (hour < 18) return "Buenas tardes";
-  return "Buenas noches";
-};
-
-// Header Component with Motivation
-const DashboardHeader = ({ userName, dayNumber, todayMood, motivationalQuote, onNavigate, activeTab }) => (
-  <div className="dashboard-header-fixed">
-    <div className="header-top">
-      <div className="greeting-section">
-        <h1 className="greeting-text">{getTimeOfDayGreeting()}, {userName}!</h1>
-        <p className="day-indicator">Día {dayNumber} de 21</p>
-      </div>
-      {todayMood && (
-        <div className="mood-indicator-small">
-          <span className="mood-emoji-small">{todayMood.emoji}</span>
-        </div>
-      )}
-    </div>
-    
-    <div className="motivation-banner">
-      <Sparkles size={16} className="sparkle-icon" />
-      <p className="motivation-text">{motivationalQuote}</p>
-      <Sparkles size={16} className="sparkle-icon" />
+// Header Component - Minimal with just motivation
+const DashboardHeader = ({ motivationalQuote }) => (
+  <div className="dashboard-header-minimal">
+    <div className="motivation-banner-minimal">
+      <Sparkles size={14} className="sparkle-icon" />
+      <p className="motivation-text-minimal">{motivationalQuote}</p>
+      <Sparkles size={14} className="sparkle-icon" />
     </div>
   </div>
 );
 
 // Task Card Component
-const TaskCard = ({ card, onComplete }) => (
+const TaskCard = ({ card, onComplete, cardNumber, totalCards }) => (
   <div className={`card-content task-card ${card.completed ? 'completed' : ''}`}>
     <div className="task-header">
       <span className="task-icon">{card.icon}</span>
@@ -252,11 +261,16 @@ const TaskCard = ({ card, onComplete }) => (
         </>
       )}
     </button>
+    
+    {/* Card Counter at bottom */}
+    <div className="card-counter-inline">
+      {cardNumber} / {totalCards}
+    </div>
   </div>
 );
 
 // Tip Card Component
-const TipCard = ({ card }) => (
+const TipCard = ({ card, cardNumber, totalCards }) => (
   <div className="card-content tip-card">
     <div className="tip-header">
       <Sparkles size={24} />
@@ -265,6 +279,11 @@ const TipCard = ({ card }) => (
     <p className="tip-content">{card.content}</p>
     <div className="tip-decoration">
       <BookOpen size={48} className="tip-icon" />
+    </div>
+    
+    {/* Card Counter at bottom */}
+    <div className="card-counter-inline">
+      {cardNumber} / {totalCards}
     </div>
   </div>
 );
@@ -303,22 +322,19 @@ const Dashboard = () => {
   const [todayMood, setTodayMood] = useState(null);
   const [completedTasks, setCompletedTasks] = useState([]);
   const [dayNumber, setDayNumber] = useState(1);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [cards, setCards] = useState([]);
   const [motivationalQuote, setMotivationalQuote] = useState('');
   const [activeTab, setActiveTab] = useState('home');
-  
-  // Touch handling
-  const [touchStart, setTouchStart] = useState(0);
-  const [touchEnd, setTouchEnd] = useState(0);
-  const containerRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   const initializeDashboard = useCallback(async () => {
     // Get today's mood
     const savedMood = localStorage.getItem('visa-quest-daily-mood');
+    let moodValue = 'default';
     if (savedMood) {
       const parsed = JSON.parse(savedMood);
       setTodayMood(parsed);
+      moodValue = parsed.mood || 'default';
     }
 
     // Calculate day number
@@ -337,8 +353,9 @@ const Dashboard = () => {
     const completed = JSON.parse(localStorage.getItem('visa-quest-completed-tasks') || '[]');
     setCompletedTasks(completed);
 
-    // Set motivational quote
-    setMotivationalQuote(motivationalQuotes[dayNumber % motivationalQuotes.length]);
+    // Set motivational quote based on mood
+    const quotes = getMotivationalQuotes(moodValue);
+    setMotivationalQuote(quotes[Math.floor(Math.random() * quotes.length)]);
 
     // Track dashboard view
     analyticsService.trackAction(currentUser?.uid, 'dashboard_view', { dayNumber });
@@ -354,15 +371,16 @@ const Dashboard = () => {
     setCards(dailyCards);
   }, [dayNumber, completedTasks]);
 
-  // Rotate motivational quote every 10 seconds
+  // Rotate motivational quote every 10 seconds based on mood
   useEffect(() => {
     const interval = setInterval(() => {
-      const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
-      setMotivationalQuote(randomQuote);
+      const moodValue = todayMood?.mood || 'default';
+      const quotes = getMotivationalQuotes(moodValue);
+      setMotivationalQuote(quotes[Math.floor(Math.random() * quotes.length)]);
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [todayMood]);
 
   const handleTaskComplete = async (taskId) => {
     if (completedTasks.includes(taskId)) return;
@@ -398,40 +416,6 @@ const Dashboard = () => {
     }
   };
 
-  // Touch handlers for swipe
-  const handleTouchStart = (e) => {
-    setTouchStart(e.touches[0].clientY);
-  };
-
-  const handleTouchMove = (e) => {
-    setTouchEnd(e.touches[0].clientY);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isSwipeUp = distance > 50;
-    const isSwipeDown = distance < -50;
-    
-    if (isSwipeUp && currentCardIndex < cards.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-    }
-    
-    if (isSwipeDown && currentCardIndex > 0) {
-      setCurrentCardIndex(currentCardIndex - 1);
-    }
-  };
-
-  // Mouse wheel handler
-  const handleWheel = (e) => {
-    if (e.deltaY > 0 && currentCardIndex < cards.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-    } else if (e.deltaY < 0 && currentCardIndex > 0) {
-      setCurrentCardIndex(currentCardIndex - 1);
-    }
-  };
-
   // Reset journey handler
   const handleResetJourney = () => {
     if (window.confirm('¿Estás segura que quieres reiniciar tu viaje? Esto borrará todo tu progreso local.')) {
@@ -448,12 +432,18 @@ const Dashboard = () => {
   };
 
   // Render card based on type
-  const renderCard = (card) => {
+  const renderCard = (card, index) => {
+    const props = {
+      card,
+      cardNumber: index + 1,
+      totalCards: cards.length
+    };
+    
     switch (card.type) {
       case CARD_TYPES.TASK:
-        return <TaskCard card={card} onComplete={handleTaskComplete} />;
+        return <TaskCard {...props} onComplete={handleTaskComplete} />;
       case CARD_TYPES.TIP:
-        return <TipCard card={card} />;
+        return <TipCard {...props} />;
       default:
         return null;
     }
@@ -466,94 +456,40 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="dashboard-container-new">
+    <div className="dashboard-container-minimal">
       {/* Fixed Header with Motivation */}
       <DashboardHeader 
         userName={userName}
         dayNumber={dayNumber}
         todayMood={todayMood}
         motivationalQuote={motivationalQuote}
-        onNavigate={handleTabChange}
-        activeTab={activeTab}
       />
       
-      {/* Main Content Area */}
+      {/* Main Content Area with Infinite Scroll */}
       <div 
-        className="dashboard-content"
-        ref={containerRef}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onWheel={handleWheel}
+        className="dashboard-scroll-container"
+        ref={scrollContainerRef}
       >
         {/* Reset Button */}
         <button 
-          className="reset-button-new"
+          className="reset-button-minimal"
           onClick={handleResetJourney}
           title="Reiniciar viaje"
         >
           <RefreshCw size={16} />
         </button>
         
-        {/* Card Stack */}
-        <div className="cards-wrapper">
+        {/* Card List */}
+        <div className="cards-list">
           {cards.map((card, index) => (
             <div
               key={card.id}
-              className={`card-container ${index === currentCardIndex ? 'active' : ''} ${
-                index < currentCardIndex ? 'passed' : ''
-              }`}
-              style={{
-                transform: `translateY(${(index - currentCardIndex) * 100}%)`,
-                opacity: Math.abs(index - currentCardIndex) > 1 ? 0 : 1,
-                pointerEvents: index === currentCardIndex ? 'auto' : 'none'
-              }}
+              className="card-wrapper"
             >
               <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-                {renderCard(card)}
+                {renderCard(card, index)}
               </div>
             </div>
-          ))}
-        </div>
-        
-        {/* Card Counter */}
-        <div className="card-counter">
-          {currentCardIndex + 1} / {cards.length}
-        </div>
-        
-        {/* Navigation Hints */}
-        {currentCardIndex > 0 && (
-          <button 
-            className="nav-hint nav-hint-up"
-            onClick={() => setCurrentCardIndex(currentCardIndex - 1)}
-            aria-label="Previous card"
-          >
-            <ChevronUp size={24} />
-          </button>
-        )}
-        
-        {currentCardIndex < cards.length - 1 && (
-          <button 
-            className="nav-hint nav-hint-down"
-            onClick={() => setCurrentCardIndex(currentCardIndex + 1)}
-            aria-label="Next card"
-          >
-            <ChevronDown size={24} />
-          </button>
-        )}
-        
-        {/* Progress Dots */}
-        <div className="progress-dots">
-          {cards.map((card, index) => (
-            <div
-              key={index}
-              className={`progress-dot ${
-                index === currentCardIndex ? 'active' : ''
-              } ${
-                card.type === CARD_TYPES.TASK && card.completed ? 'completed' : ''
-              }`}
-              onClick={() => setCurrentCardIndex(index)}
-            />
           ))}
         </div>
       </div>
