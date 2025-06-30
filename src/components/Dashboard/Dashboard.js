@@ -1095,11 +1095,14 @@ const Dashboard = () => {
     velocityRef.current = 0;
   };
 
-  // Mouse wheel handler with momentum
-  const handleWheel = (e) => {
-    if (cards.length === 0 || isTransitioning || activeTab !== 'home') return;
+  // Mouse wheel handler with momentum - Fixed to only work on home tab
+  const handleWheel = useCallback((e) => {
+    // Only handle wheel events in home tab
+    if (activeTab !== 'home' || cards.length === 0 || isTransitioning) return;
     
+    // Only prevent default and navigate if we're in the home tab
     e.preventDefault();
+    e.stopPropagation();
     
     const velocity = e.deltaY * 10;
     
@@ -1108,7 +1111,7 @@ const Dashboard = () => {
     } else if (e.deltaY < 0) {
       navigateToCard(currentCardIndex - 1, velocity);
     }
-  };
+  }, [activeTab, cards.length, isTransitioning, currentCardIndex, navigateToCard]);
 
   // Reset journey handler
   const handleResetJourney = () => {
@@ -1232,6 +1235,22 @@ const Dashboard = () => {
     return baseTransform + dragTransform;
   };
 
+  // Add event listener only for the content area
+  useEffect(() => {
+    const contentElement = containerRef.current;
+    
+    if (contentElement && activeTab === 'home') {
+      const wheelHandler = (e) => handleWheel(e);
+      
+      // Add passive: false to allow preventDefault
+      contentElement.addEventListener('wheel', wheelHandler, { passive: false });
+      
+      return () => {
+        contentElement.removeEventListener('wheel', wheelHandler);
+      };
+    }
+  }, [handleWheel, activeTab]);
+
   return (
     <div className="dashboard-tiktok-container">
       {/* Fixed Header with Motivation */}
@@ -1244,7 +1263,7 @@ const Dashboard = () => {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onWheel={handleWheel}
+        // Remove onWheel from here - we'll use addEventListener instead
       >
         {/* Reset Button - Only show on home tab */}
         {activeTab === 'home' && (
