@@ -148,6 +148,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
+  margin-bottom: 12px;
 }
 
 .btn-google:hover {
@@ -163,6 +164,37 @@
 .btn-google img {
   width: 20px;
   height: 20px;
+}
+
+.btn-guest {
+  width: 100%;
+  padding: 12px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-guest:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.btn-guest:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.guest-icon {
+  font-size: 20px;
 }
 
 .auth-switch {
@@ -188,6 +220,28 @@
 .link-button:disabled {
   color: #999;
   cursor: not-allowed;
+}
+
+.guest-info {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.text-gray-500 {
+  color: #6b7280;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-4 {
+  margin-top: 1rem;
 }
 
 @media (max-width: 480px) {
