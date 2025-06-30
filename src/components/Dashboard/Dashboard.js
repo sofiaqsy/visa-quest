@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { progressService, analyticsService } from '../../firebase/services';
-import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy, Calendar, Target, Award, TrendingUp, Briefcase, Heart, Brain } from 'lucide-react';
+import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy, Target, Award, TrendingUp } from 'lucide-react';
 import { 
   getSmartTaskDistribution, 
   getContextualGreeting,
   getCurrentTimeContext,
-  isWorkHours,
   GOAL_CATEGORIES,
   WORK_TASKS,
   PERSONAL_TASKS,
