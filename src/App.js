@@ -392,10 +392,6 @@ function App() {
     setCurrentScreen('dashboard');
   };
 
-  const handleBack = () => {
-    setCurrentScreen('welcome');
-  };
-
   const AppContent = () => {
     const [needsMoodCheck, setNeedsMoodCheck] = useState(false);
 
