@@ -20,6 +20,7 @@ const WelcomeScreen = ({ onStart }) => {
   const [userName, setUserName] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // Prevent double clicks
   const { currentUser, continueAsGuest } = useAuth();
 
   useEffect(() => {
@@ -146,34 +147,18 @@ const WelcomeScreen = ({ onStart }) => {
       }
     };
 
-    // Initialize with a timeout to prevent getting stuck
-    const initTimeout = setTimeout(() => {
-      if (currentStep === 'checking') {
-        console.warn('Welcome initialization timeout - proceeding to greeting');
-        setIsLoaded(true);
-        setCurrentStep('greeting');
-      }
-    }, 3000); // 3 second timeout
+    // Initialize immediately without delay
+    initializeWelcome();
 
-    // Small delay to ensure everything is loaded
-    const timer = setTimeout(() => {
-      initializeWelcome();
-    }, 100);
-
-    // Request notification permission gently
+    // Request notification permission after 2 seconds
     setTimeout(() => {
       requestNotificationPermission();
     }, 2000);
 
-    // Show install prompt after user interaction
+    // Show install prompt after 10 seconds
     setTimeout(() => {
       setShowInstallPrompt(true);
     }, 10000);
-
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(initTimeout);
-    };
   }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const moods = [
@@ -186,11 +171,13 @@ const WelcomeScreen = ({ onStart }) => {
 
   const handleNameSubmit = async (e) => {
     e.preventDefault();
-    if (userName.trim()) {
+    if (userName.trim() && !isProcessing) {
+      setIsProcessing(true);
+      
       // Save to localStorage first (immediate feedback)
       localStorage.setItem('visa-quest-user-name', userName.trim());
       
-      // Save to Firebase
+      // Save to Firebase in background
       try {
         if (currentUser?.uid) {
           // Authenticated user
@@ -212,11 +199,16 @@ const WelcomeScreen = ({ onStart }) => {
         console.warn('Error saving to Firebase (non-critical):', error);
       }
       
+      // Move to next step immediately
       setCurrentStep('mood');
+      setIsProcessing(false);
     }
   };
 
   const handleMoodSelect = async (mood) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    
     setSelectedMood(mood);
     
     // Save locally first (immediate feedback)
@@ -230,7 +222,7 @@ const WelcomeScreen = ({ onStart }) => {
     
     localStorage.setItem('visa-quest-daily-mood', JSON.stringify(moodData));
     
-    // Save to Firebase
+    // Save to Firebase in background
     try {
       await moodService.saveDailyMood(currentUser?.uid, {
         mood: mood.value,
@@ -245,25 +237,24 @@ const WelcomeScreen = ({ onStart }) => {
       console.warn('Error saving mood to Firebase (non-critical):', error);
     }
     
-    setTimeout(() => {
-      setCurrentStep('ready');
-    }, 1500);
+    // Move to ready step immediately
+    setCurrentStep('ready');
+    setIsProcessing(false);
   };
 
   const handleStart = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    
     // Mark that user has seen welcome
     localStorage.setItem('visa-quest-has-seen-welcome', 'true');
     
-    // Save to Firebase if authenticated
+    // Save to Firebase if authenticated (don't wait)
     if (currentUser?.uid) {
-      try {
-        await userService.saveUserProfile(currentUser.uid, {
-          hasSeenWelcome: true,
-          lastLogin: new Date().toISOString()
-        });
-      } catch (error) {
-        console.warn('Error updating user profile (non-critical):', error);
-      }
+      userService.saveUserProfile(currentUser.uid, {
+        hasSeenWelcome: true,
+        lastLogin: new Date().toISOString()
+      }).catch(error => console.warn('Error updating user profile (non-critical):', error));
     }
     
     // If no user is logged in, continue as guest
@@ -276,12 +267,11 @@ const WelcomeScreen = ({ onStart }) => {
     }
     
     // Track action
-    try {
-      analyticsService.trackAction(currentUser?.uid, 'journey_started');
-    } catch (error) {
-      console.warn('Error tracking journey start (non-critical):', error);
-    }
+    analyticsService.trackAction(currentUser?.uid, 'journey_started').catch(error => 
+      console.warn('Error tracking journey start (non-critical):', error)
+    );
     
+    // Navigate immediately
     onStart();
   };
 
@@ -336,10 +326,10 @@ const WelcomeScreen = ({ onStart }) => {
                 />
                 <button
                   type="submit"
-                  disabled={!userName.trim()}
+                  disabled={!userName.trim() || isProcessing}
                   className="w-full bg-blue-500 text-white py-3 px-6 rounded-xl font-semibold text-lg hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  Continuar ✨
+                  {isProcessing ? 'Continuando...' : 'Continuar ✨'}
                 </button>
               </form>
             </div>
@@ -391,9 +381,10 @@ const WelcomeScreen = ({ onStart }) => {
                   <button
                     key={mood.value}
                     onClick={() => handleMoodSelect(mood)}
+                    disabled={isProcessing}
                     className={`w-full p-4 rounded-xl border-2 text-left hover:border-blue-300 hover:bg-blue-50 transition-all ${
                       selectedMood?.value === mood.value ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
-                    }`}
+                    } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                     style={{ animationDelay: `${0.1 * index}s` }}
                   >
                     <div className="flex items-center space-x-4">
@@ -475,10 +466,13 @@ const WelcomeScreen = ({ onStart }) => {
             {/* Call to action */}
             <button
               onClick={handleStart}
-              className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-green-600 hover:to-blue-600 transform hover:scale-105 transition-all duration-300 pulse-glow slide-up"
+              disabled={isProcessing}
+              className={`w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-green-600 hover:to-blue-600 transform hover:scale-105 transition-all duration-300 pulse-glow slide-up ${
+                isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               style={{ animationDelay: '0.6s' }}
             >
-              ¡Empecemos el día! 🌟
+              {isProcessing ? 'Cargando...' : '¡Empecemos el día! 🌟'}
             </button>
 
             {/* Account options */}
