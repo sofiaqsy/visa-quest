@@ -327,7 +327,6 @@ const Dashboard = () => {
   // Enhanced touch handling with velocity tracking
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
-  const [touchStartTime, setTouchStartTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -466,7 +465,6 @@ const Dashboard = () => {
   // Enhanced touch handlers with velocity tracking
   const handleTouchStart = (e) => {
     setTouchStart(e.touches[0].clientY);
-    setTouchStartTime(Date.now());
     setIsDragging(true);
     lastTouchRef.current = e.touches[0].clientY;
     velocityRef.current = 0;
