@@ -181,7 +181,7 @@ const getMotivationalQuotes = (mood) => {
   return quotesByMood[mood] || quotesByMood.default;
 };
 
-// Get all cards for a day with infinite content
+// Get all cards for a day
 const getDailyCards = (dayNumber, completedTasks) => {
   const cards = [];
   const tasks = getTasksByDay(dayNumber);
@@ -211,11 +211,7 @@ const getDailyCards = (dayNumber, completedTasks) => {
     });
   }
   
-  // Triple the cards to create seamless infinite scroll
-  const baseCards = [...cards];
-  const infiniteCards = [...baseCards, ...baseCards, ...baseCards];
-  
-  return { baseCards, infiniteCards };
+  return cards;
 };
 
 // Header Component - Minimal with just motivation
@@ -320,7 +316,6 @@ const Dashboard = () => {
   const [dayNumber, setDayNumber] = useState(1);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [cards, setCards] = useState([]);
-  const [baseCardsLength, setBaseCardsLength] = useState(0);
   const [motivationalQuote, setMotivationalQuote] = useState('');
   const [activeTab, setActiveTab] = useState('home');
   
@@ -381,12 +376,8 @@ const Dashboard = () => {
 
   useEffect(() => {
     // Generate cards when data is ready
-    const { baseCards, infiniteCards } = getDailyCards(dayNumber, completedTasks);
-    setCards(infiniteCards);
-    setBaseCardsLength(baseCards.length);
-    
-    // Start in the middle set to enable seamless looping
-    setCurrentCardIndex(baseCards.length);
+    const baseCards = getDailyCards(dayNumber, completedTasks);
+    setCards(baseCards);
   }, [dayNumber, completedTasks]);
 
   // Rotate motivational quote every 10 seconds based on mood
@@ -429,10 +420,22 @@ const Dashboard = () => {
 
   // Enhanced card navigation with smooth animations
   const navigateToCard = useCallback((newIndex, velocity = 0) => {
-    if (isTransitioning) return;
+    if (isTransitioning || cards.length === 0) return;
+    
+    // Handle infinite scroll without jumps
+    let targetIndex = newIndex;
+    
+    // If going past the end, wrap to beginning
+    if (targetIndex >= cards.length) {
+      targetIndex = 0;
+    } 
+    // If going before the beginning, wrap to end
+    else if (targetIndex < 0) {
+      targetIndex = cards.length - 1;
+    }
     
     setIsTransitioning(true);
-    setCurrentCardIndex(newIndex);
+    setCurrentCardIndex(targetIndex);
     setDragOffset(0);
     
     // Calculate transition duration based on velocity
@@ -448,19 +451,10 @@ const Dashboard = () => {
       });
     }
     
-    // Reset position when reaching boundaries for seamless loop
     setTimeout(() => {
       setIsTransitioning(false);
-      
-      if (newIndex >= baseCardsLength * 2) {
-        // At end of second set, jump to middle set
-        setCurrentCardIndex(baseCardsLength + (newIndex % baseCardsLength));
-      } else if (newIndex < baseCardsLength) {
-        // At beginning of first set, jump to middle set
-        setCurrentCardIndex(baseCardsLength + newIndex);
-      }
     }, transitionDuration);
-  }, [baseCardsLength, isTransitioning]);
+  }, [cards.length, isTransitioning]);
 
   // Enhanced touch handlers with velocity tracking
   const handleTouchStart = (e) => {
@@ -617,6 +611,50 @@ const Dashboard = () => {
               const isPrev = index === currentCardIndex - 1;
               const isVisible = Math.abs(index - currentCardIndex) <= 2;
               
+              // Special handling for wrapping
+              const isLastCard = currentCardIndex === cards.length - 1;
+              const isFirstCard = currentCardIndex === 0;
+              
+              // Show first card as next when on last card
+              if (isLastCard && index === 0) {
+                return (
+                  <div
+                    key={`${card.id}-${index}`}
+                    className="card-container next"
+                    style={{
+                      transform: `translateY(100%)`,
+                      opacity: 0.8,
+                      pointerEvents: 'none',
+                      transition: isDragging ? 'none' : undefined
+                    }}
+                  >
+                    <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
+                      {renderCard(card)}
+                    </div>
+                  </div>
+                );
+              }
+              
+              // Show last card as prev when on first card
+              if (isFirstCard && index === cards.length - 1) {
+                return (
+                  <div
+                    key={`${card.id}-${index}`}
+                    className="card-container prev"
+                    style={{
+                      transform: `translateY(-100%)`,
+                      opacity: 0.8,
+                      pointerEvents: 'none',
+                      transition: isDragging ? 'none' : undefined
+                    }}
+                  >
+                    <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
+                      {renderCard(card)}
+                    </div>
+                  </div>
+                );
+              }
+              
               return (
                 <div
                   key={`${card.id}-${index}`}
@@ -642,18 +680,6 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-        
-        {/* Swipe indicators */}
-        {cards.length > 0 && (
-          <div className="swipe-indicators">
-            <div className={`swipe-indicator swipe-up ${currentCardIndex < cards.length - 1 ? 'active' : ''}`}>
-              <div className="swipe-arrow">↑</div>
-            </div>
-            <div className={`swipe-indicator swipe-down ${currentCardIndex > 0 ? 'active' : ''}`}>
-              <div className="swipe-arrow">↓</div>
-            </div>
-          </div>
-        )}
       </div>
       
       {/* Bottom Tab Bar */}
