@@ -536,7 +536,7 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
   });
   
   return (
-    <div className="progress-view">
+    <div className="progress-view" style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #1a1a1a, #000)' }}>
       {/* Header */}
       <div className="progress-header">
         <h1 className="progress-title">Tu Progreso Global</h1>
@@ -634,30 +634,32 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
       />
       
       {/* Progress by Category */}
-      <div className="category-progress">
-        <h3 className="section-title">Progreso por Categoría</h3>
-        {Object.entries(progressByCategory).map(([category, data]) => {
-          const config = CATEGORY_CONFIG[category];
-          return (
-            <div key={category} className="category-progress-item">
-              <div className="category-info">
-                <span className="category-icon">{config.icon}</span>
-                <span className="category-name">{category}</span>
+      {Object.keys(progressByCategory).length > 0 && (
+        <div className="category-progress">
+          <h3 className="section-title">Progreso por Categoría</h3>
+          {Object.entries(progressByCategory).map(([category, data]) => {
+            const config = CATEGORY_CONFIG[category];
+            return (
+              <div key={category} className="category-progress-item">
+                <div className="category-info">
+                  <span className="category-icon">{config.icon}</span>
+                  <span className="category-name">{category}</span>
+                </div>
+                <div className="category-progress-bar">
+                  <div 
+                    className="category-progress-fill"
+                    style={{ 
+                      width: `${data.percentage}%`,
+                      background: `linear-gradient(to right, ${config.gradient.split(' ')[0].replace('from-', '#')}, ${config.gradient.split(' ')[2].replace('to-', '#')})`
+                    }}
+                  />
+                </div>
+                <span className="category-stats">{data.completed}/{data.total}</span>
               </div>
-              <div className="category-progress-bar">
-                <div 
-                  className="category-progress-fill"
-                  style={{ 
-                    width: `${data.percentage}%`,
-                    background: `linear-gradient(to right, ${config.gradient.split(' ')[0].replace('from-', '#')}, ${config.gradient.split(' ')[2].replace('to-', '#')})`
-                  }}
-                />
-              </div>
-              <span className="category-stats">{data.completed}/{data.total}</span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
       
       {/* Motivational Message */}
       <div className="motivation-card">
