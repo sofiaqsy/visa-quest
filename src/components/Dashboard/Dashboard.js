@@ -312,7 +312,7 @@ const TabBar = ({ activeTab, onTabChange }) => (
   </div>
 );
 
-// Main Dashboard Component
+// Main Dashboard Component with Enhanced TikTok-like transitions
 const Dashboard = () => {
   const { currentUser } = useAuth();
   const [todayMood, setTodayMood] = useState(null);
@@ -324,10 +324,18 @@ const Dashboard = () => {
   const [motivationalQuote, setMotivationalQuote] = useState('');
   const [activeTab, setActiveTab] = useState('home');
   
-  // Touch handling
+  // Enhanced touch handling with velocity tracking
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const [touchStartTime, setTouchStartTime] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  
   const containerRef = useRef(null);
+  const animationRef = useRef(null);
+  const velocityRef = useRef(0);
+  const lastTouchRef = useRef(0);
 
   const initializeDashboard = useCallback(async () => {
     // Get today's mood
@@ -421,12 +429,31 @@ const Dashboard = () => {
     analyticsService.trackAction(currentUser?.uid, 'task_completed', { taskId, dayNumber, progress });
   };
 
-  // Handle card navigation with seamless infinite loop
-  const navigateToCard = useCallback((newIndex) => {
+  // Enhanced card navigation with smooth animations
+  const navigateToCard = useCallback((newIndex, velocity = 0) => {
+    if (isTransitioning) return;
+    
+    setIsTransitioning(true);
     setCurrentCardIndex(newIndex);
+    setDragOffset(0);
+    
+    // Calculate transition duration based on velocity
+    const baseTransitionTime = 400;
+    const velocityFactor = Math.max(0.2, 1 - Math.abs(velocity) / 1000);
+    const transitionDuration = baseTransitionTime * velocityFactor;
+    
+    // Update CSS transition duration dynamically
+    if (containerRef.current) {
+      const cardElements = containerRef.current.querySelectorAll('.card-container');
+      cardElements.forEach(card => {
+        card.style.transition = `transform ${transitionDuration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity ${transitionDuration}ms ease`;
+      });
+    }
     
     // Reset position when reaching boundaries for seamless loop
     setTimeout(() => {
+      setIsTransitioning(false);
+      
       if (newIndex >= baseCardsLength * 2) {
         // At end of second set, jump to middle set
         setCurrentCardIndex(baseCardsLength + (newIndex % baseCardsLength));
@@ -434,50 +461,81 @@ const Dashboard = () => {
         // At beginning of first set, jump to middle set
         setCurrentCardIndex(baseCardsLength + newIndex);
       }
-    }, 400); // After animation completes
-  }, [baseCardsLength]);
+    }, transitionDuration);
+  }, [baseCardsLength, isTransitioning]);
 
-  // Touch handlers for swipe
+  // Enhanced touch handlers with velocity tracking
   const handleTouchStart = (e) => {
     setTouchStart(e.touches[0].clientY);
+    setTouchStartTime(Date.now());
+    setIsDragging(true);
+    lastTouchRef.current = e.touches[0].clientY;
+    velocityRef.current = 0;
   };
 
   const handleTouchMove = (e) => {
-    setTouchEnd(e.touches[0].clientY);
+    if (!isDragging) return;
+    
+    const currentTouch = e.touches[0].clientY;
+    setTouchEnd(currentTouch);
+    
+    // Calculate drag offset for visual feedback
+    const offset = currentTouch - touchStart;
+    setDragOffset(offset);
+    
+    // Calculate velocity
+    const deltaY = currentTouch - lastTouchRef.current;
+    const deltaTime = 16; // Approximate frame time
+    velocityRef.current = deltaY / deltaTime * 1000; // pixels per second
+    lastTouchRef.current = currentTouch;
+    
+    // Prevent default scrolling
+    e.preventDefault();
   };
 
   const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
+    if (!touchStart || !isDragging) return;
+    
+    setIsDragging(false);
     
     const distance = touchStart - touchEnd;
-    const isSwipeUp = distance > 50;
-    const isSwipeDown = distance < -50;
+    const velocity = velocityRef.current;
+    const timeDiff = Date.now() - touchStartTime;
+    
+    // Determine swipe threshold based on distance and velocity
+    const minSwipeDistance = 30;
+    const minSwipeVelocity = 200;
+    
+    const isSwipeUp = distance > minSwipeDistance || velocity < -minSwipeVelocity;
+    const isSwipeDown = distance < -minSwipeDistance || velocity > minSwipeVelocity;
     
     if (isSwipeUp && cards.length > 0) {
-      // Swipe up - next card
-      navigateToCard(currentCardIndex + 1);
-    }
-    
-    if (isSwipeDown && cards.length > 0) {
-      // Swipe down - previous card
-      navigateToCard(currentCardIndex - 1);
+      navigateToCard(currentCardIndex + 1, velocity);
+    } else if (isSwipeDown && cards.length > 0) {
+      navigateToCard(currentCardIndex - 1, velocity);
+    } else {
+      // Snap back to current card
+      setDragOffset(0);
     }
     
     // Reset touch positions
     setTouchStart(0);
     setTouchEnd(0);
+    velocityRef.current = 0;
   };
 
-  // Mouse wheel handler
+  // Mouse wheel handler with momentum
   const handleWheel = (e) => {
-    if (cards.length === 0) return;
+    if (cards.length === 0 || isTransitioning) return;
+    
+    e.preventDefault();
+    
+    const velocity = e.deltaY * 10;
     
     if (e.deltaY > 0) {
-      // Scroll down - next card
-      navigateToCard(currentCardIndex + 1);
+      navigateToCard(currentCardIndex + 1, velocity);
     } else if (e.deltaY < 0) {
-      // Scroll up - previous card
-      navigateToCard(currentCardIndex - 1);
+      navigateToCard(currentCardIndex - 1, velocity);
     }
   };
 
@@ -514,6 +572,22 @@ const Dashboard = () => {
     // TODO: Implement profile and progress views
   };
 
+  // Calculate card transform with drag offset
+  const getCardTransform = (index) => {
+    const baseTransform = (index - currentCardIndex) * 100;
+    const dragTransform = isDragging ? (dragOffset / window.innerHeight) * 100 : 0;
+    const rubberBandFactor = 0.3;
+    
+    // Apply rubber band effect at boundaries
+    if (currentCardIndex === 0 && dragTransform > 0) {
+      return baseTransform + (dragTransform * rubberBandFactor);
+    } else if (currentCardIndex === cards.length - 1 && dragTransform < 0) {
+      return baseTransform + (dragTransform * rubberBandFactor);
+    }
+    
+    return baseTransform + dragTransform;
+  };
+
   return (
     <div className="dashboard-tiktok-container">
       {/* Fixed Header with Motivation */}
@@ -540,23 +614,30 @@ const Dashboard = () => {
         {/* Card Stack */}
         <div className="cards-wrapper">
           {cards.length > 0 ? (
-            cards.map((card, index) => (
-              <div
-                key={`${card.id}-${index}`}
-                className={`card-container ${index === currentCardIndex ? 'active' : ''} ${
-                  index < currentCardIndex ? 'passed' : ''
-                }`}
-                style={{
-                  transform: `translateY(${(index - currentCardIndex) * 100}%)`,
-                  opacity: Math.abs(index - currentCardIndex) > 1 ? 0 : 1,
-                  pointerEvents: index === currentCardIndex ? 'auto' : 'none'
-                }}
-              >
-                <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-                  {renderCard(card)}
+            cards.map((card, index) => {
+              const isActive = index === currentCardIndex;
+              const isPassed = index < currentCardIndex;
+              const isNext = index === currentCardIndex + 1;
+              const isPrev = index === currentCardIndex - 1;
+              const isVisible = Math.abs(index - currentCardIndex) <= 2;
+              
+              return (
+                <div
+                  key={`${card.id}-${index}`}
+                  className={`card-container ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''} ${isNext ? 'next' : ''} ${isPrev ? 'prev' : ''}`}
+                  style={{
+                    transform: `translateY(${getCardTransform(index)}%)`,
+                    opacity: isVisible ? 1 : 0,
+                    pointerEvents: isActive ? 'auto' : 'none',
+                    transition: isDragging ? 'none' : undefined
+                  }}
+                >
+                  <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
+                    {renderCard(card)}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             // Loading state
             <div className="loading-state">
@@ -565,6 +646,18 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+        
+        {/* Swipe indicators */}
+        {cards.length > 0 && (
+          <div className="swipe-indicators">
+            <div className={`swipe-indicator swipe-up ${currentCardIndex < cards.length - 1 ? 'active' : ''}`}>
+              <div className="swipe-arrow">↑</div>
+            </div>
+            <div className={`swipe-indicator swipe-down ${currentCardIndex > 0 ? 'active' : ''}`}>
+              <div className="swipe-arrow">↓</div>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Bottom Tab Bar */}

@@ -1,11 +1,14 @@
 /* Dashboard TikTok Container */
 .dashboard-tiktok-container {
-  position: relative;
+  position: fixed;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
   background: #000;
-  touch-action: pan-y;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Minimal Header */
@@ -17,6 +20,7 @@
   z-index: 30;
   background: rgba(0,0,0,0.8);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   padding: 12px 16px;
 }
 
@@ -70,6 +74,7 @@
   height: 100vh;
   padding-top: 60px;
   padding-bottom: 70px;
+  touch-action: none;
 }
 
 /* Reset Button */
@@ -82,6 +87,7 @@
   height: 36px;
   background: rgba(255,255,255,0.1);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.2);
   border-radius: 50%;
   display: flex;
@@ -102,6 +108,8 @@
   position: relative;
   width: 100%;
   height: 100%;
+  perspective: 1000px;
+  transform-style: preserve-3d;
 }
 
 /* Loading State */
@@ -142,17 +150,30 @@
   left: 0;
   width: 100%;
   height: 100%;
-  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
-              opacity 0.5s ease;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+              opacity 0.4s ease;
   will-change: transform, opacity;
+  transform-origin: center center;
 }
 
 .card-container.passed {
   opacity: 0;
+  transform: translateY(-100%) scale(0.9);
 }
 
 .card-container.active {
   opacity: 1;
+  z-index: 10;
+}
+
+.card-container.next {
+  transform: translateY(100%) scale(0.95);
+  opacity: 0.8;
+}
+
+.card-container.prev {
+  transform: translateY(-100%) scale(0.95);
+  opacity: 0.8;
 }
 
 /* Card Gradient Background */
@@ -167,12 +188,31 @@
   padding: 20px;
 }
 
+/* Add subtle gradient animation */
+.card-gradient::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: shimmer 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
 /* Card Content Base */
 .card-content {
   width: 100%;
   max-width: 400px;
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 28px;
   padding: 32px 24px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -180,6 +220,19 @@
   z-index: 1;
   animation: slideUp 0.5s ease-out;
   border: 1px solid rgba(255,255,255,0.2);
+  transform: translateZ(0);
+}
+
+/* Enhanced card entrance animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Task Card Specific */
@@ -200,6 +253,13 @@
   font-size: 120px;
   color: rgba(16, 185, 129, 0.1);
   font-weight: bold;
+  animation: checkmark-bounce 0.5s ease-out;
+}
+
+@keyframes checkmark-bounce {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 .task-header {
@@ -212,6 +272,12 @@
 .task-icon {
   font-size: 42px;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  animation: icon-float 3s ease-in-out infinite;
+}
+
+@keyframes icon-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
 
 .task-time {
@@ -293,6 +359,26 @@
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.task-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.task-button:active::before {
+  width: 300px;
+  height: 300px;
 }
 
 .task-button:hover:not(:disabled) {
@@ -351,6 +437,61 @@
   height: 48px;
 }
 
+/* Swipe Indicators */
+.swipe-indicators {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  pointer-events: none;
+}
+
+.swipe-indicator {
+  width: 40px;
+  height: 40px;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.swipe-indicator.active {
+  opacity: 0.5;
+}
+
+.swipe-arrow {
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  animation: arrow-bounce 1.5s ease-in-out infinite;
+}
+
+.swipe-up .swipe-arrow {
+  animation-name: arrow-bounce-up;
+}
+
+.swipe-down .swipe-arrow {
+  animation-name: arrow-bounce-down;
+}
+
+@keyframes arrow-bounce-up {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes arrow-bounce-down {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
 /* Tab Bar */
 .tab-bar {
   position: fixed;
@@ -359,6 +500,7 @@
   right: 0;
   background: rgba(0,0,0,0.95);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255,255,255,0.1);
   display: flex;
   justify-content: space-around;
@@ -394,23 +536,17 @@
   width: 40px;
   height: 2px;
   background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  animation: tab-glow 2s ease-in-out infinite;
+}
+
+@keyframes tab-glow {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
 }
 
 .tab-item span {
   font-size: 12px;
   font-weight: 500;
-}
-
-/* Animations */
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* Mobile Optimizations */
@@ -451,6 +587,19 @@
     width: 32px;
     height: 32px;
   }
+  
+  .swipe-indicators {
+    right: 12px;
+  }
+  
+  .swipe-indicator {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .swipe-arrow {
+    font-size: 16px;
+  }
 }
 
 /* Gradient Utilities */
@@ -481,9 +630,15 @@
 /* Prevent scroll bounce on iOS */
 .dashboard-tiktok-container {
   position: fixed;
-  touch-action: pan-y;
+  touch-action: none;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Performance optimizations */
+* {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Remove old styles and counters */
