@@ -231,13 +231,34 @@ const getTasksForGoal = (goalId, category) => {
   }
 };
 
-// Helper function to parse gradient colors safely
+// Helper function to parse gradient colors safely - FIXED VERSION
 const parseGradientColors = (gradient) => {
-  if (!gradient) return { from: '#667eea', to: '#764ba2' }; // Default colors
+  // Default colors
+  const defaultColors = { from: '#667eea', to: '#764ba2' };
   
-  const parts = gradient.split(' ');
-  const fromColor = parts[0]?.replace('from-', '') || 'blue-400';
-  const toColor = parts[2]?.replace('to-', '') || 'blue-600';
+  // Return default if gradient is not provided
+  if (!gradient || typeof gradient !== 'string') {
+    return defaultColors;
+  }
+  
+  // Split the gradient string
+  const parts = gradient.split(' ').filter(Boolean);
+  
+  // Extract color names safely
+  let fromColor = 'blue-400';
+  let toColor = 'blue-600';
+  
+  // Find the from color
+  const fromPart = parts.find(part => part.startsWith('from-'));
+  if (fromPart) {
+    fromColor = fromPart.replace('from-', '');
+  }
+  
+  // Find the to color
+  const toPart = parts.find(part => part.startsWith('to-'));
+  if (toPart) {
+    toColor = toPart.replace('to-', '');
+  }
   
   // Convert Tailwind colors to hex (simplified mapping)
   const colorMap = {
@@ -258,12 +279,14 @@ const parseGradientColors = (gradient) => {
     'orange-400': '#fb923c',
     'orange-600': '#ea580c',
     'red-400': '#f87171',
-    'red-600': '#dc2626'
+    'red-600': '#dc2626',
+    'gray-400': '#9ca3af',
+    'gray-600': '#4b5563'
   };
   
   return {
-    from: colorMap[fromColor] || '#667eea',
-    to: colorMap[toColor] || '#764ba2'
+    from: colorMap[fromColor] || defaultColors.from,
+    to: colorMap[toColor] || defaultColors.to
   };
 };
 
@@ -558,7 +581,10 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
     userName
   });
 
-  const allTasks = getAllTasks(activeGoals);
+  // Ensure activeGoals is an array
+  const safeActiveGoals = Array.isArray(activeGoals) ? activeGoals : [];
+  
+  const allTasks = getAllTasks(safeActiveGoals);
   const totalTasks = allTasks.length;
   const completedCount = completedTasks.length;
   const progressPercentage = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
@@ -645,7 +671,7 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
             <Target size={24} />
           </div>
           <div className="stat-content">
-            <span className="stat-value" style={{ color: 'white' }}>{activeGoals.filter(g => g.active).length}</span>
+            <span className="stat-value" style={{ color: 'white' }}>{safeActiveGoals.filter(g => g.active).length}</span>
             <span className="stat-label" style={{ color: 'white' }}>Objetivos activos</span>
           </div>
         </div>
@@ -683,7 +709,7 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
       
       {/* Goal Manager */}
       <GoalManager 
-        activeGoals={activeGoals}
+        activeGoals={safeActiveGoals}
         onGoalsUpdate={onGoalsUpdate}
         completedTasks={completedTasks}
       />
