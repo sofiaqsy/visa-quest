@@ -7,7 +7,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   sendPasswordResetEmail,
-  updateProfile
+  updateProfile,
+  signInAnonymously
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { userService } from '../firebase/services';
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isGuest, setIsGuest] = useState(false);
 
   // Sign up with email and password
   const signup = async (email, password, displayName) => {
@@ -82,11 +84,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Continue as guest (anonymous auth)
+  const continueAsGuest = async () => {
+    try {
+      setError('');
+      const { user } = await signInAnonymously(auth);
+      setIsGuest(true);
+      
+      // Store guest status in localStorage
+      localStorage.setItem('visa-quest-guest-mode', 'true');
+      
+      return user;
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    }
+  };
+
   // Sign out
   const logout = async () => {
     try {
       setError('');
       await signOut(auth);
+      setIsGuest(false);
+      localStorage.removeItem('visa-quest-guest-mode');
     } catch (error) {
       setError(error.message);
       throw error;
@@ -108,6 +129,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      
+      // Check if user is guest
+      if (user && user.isAnonymous) {
+        setIsGuest(true);
+      } else {
+        setIsGuest(localStorage.getItem('visa-quest-guest-mode') === 'true');
+      }
+      
       setLoading(false);
     });
 
@@ -116,9 +145,11 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
+    isGuest,
     signup,
     login,
     signInWithGoogle,
+    continueAsGuest,
     logout,
     resetPassword,
     error,
