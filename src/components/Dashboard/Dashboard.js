@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { progressService, analyticsService } from '../../firebase/services';
-import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy, Target, Award, TrendingUp } from 'lucide-react';
+import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy, Target, Award, TrendingUp, Plus, X, Settings } from 'lucide-react';
 import { 
   getSmartTaskDistribution, 
   getContextualGreeting,
@@ -27,6 +27,40 @@ const CATEGORY_CONFIG = {
   [GOAL_CATEGORIES.HEALTH]: { icon: '💪', gradient: 'from-green-400 to-green-600' },
   [GOAL_CATEGORIES.LEARNING]: { icon: '📚', gradient: 'from-yellow-400 to-yellow-600' },
   [GOAL_CATEGORIES.FINANCE]: { icon: '💰', gradient: 'from-indigo-400 to-indigo-600' }
+};
+
+// Predefined goal templates
+const GOAL_TEMPLATES = {
+  [GOAL_CATEGORIES.VISA]: [
+    { id: 'visa-canada', name: 'Visa Canadá', description: 'Proceso completo para visa de turista' },
+    { id: 'visa-usa', name: 'Visa Estados Unidos', description: 'Documentación para visa americana' },
+    { id: 'visa-europe', name: 'Visa Schengen', description: 'Preparación para visa europea' }
+  ],
+  [GOAL_CATEGORIES.WORK]: [
+    { id: 'work-productivity', name: 'Productividad Laboral', description: 'Mejora tu eficiencia diaria' },
+    { id: 'work-project', name: 'Proyecto Q1', description: 'Completar proyecto del trimestre' },
+    { id: 'work-skills', name: 'Desarrollo Profesional', description: 'Nuevas habilidades técnicas' }
+  ],
+  [GOAL_CATEGORIES.HEALTH]: [
+    { id: 'health-exercise', name: 'Rutina de Ejercicio', description: '30 días de actividad física' },
+    { id: 'health-nutrition', name: 'Alimentación Saludable', description: 'Mejora tus hábitos alimenticios' },
+    { id: 'health-mindfulness', name: 'Bienestar Mental', description: 'Meditación y mindfulness diario' }
+  ],
+  [GOAL_CATEGORIES.PERSONAL]: [
+    { id: 'personal-hobby', name: 'Nuevo Hobby', description: 'Aprende algo nuevo este mes' },
+    { id: 'personal-organize', name: 'Organización Personal', description: 'Ordena tu vida y espacios' },
+    { id: 'personal-social', name: 'Vida Social', description: 'Fortalece tus relaciones' }
+  ],
+  [GOAL_CATEGORIES.LEARNING]: [
+    { id: 'learning-language', name: 'Nuevo Idioma', description: 'Practica 15 minutos al día' },
+    { id: 'learning-course', name: 'Curso Online', description: 'Completa un curso este mes' },
+    { id: 'learning-reading', name: 'Hábito de Lectura', description: 'Lee 20 páginas diarias' }
+  ],
+  [GOAL_CATEGORIES.FINANCE]: [
+    { id: 'finance-savings', name: 'Meta de Ahorro', description: 'Ahorra para tu objetivo' },
+    { id: 'finance-budget', name: 'Presupuesto Mensual', description: 'Controla tus gastos' },
+    { id: 'finance-investment', name: 'Inversión Inteligente', description: 'Aprende a invertir' }
+  ]
 };
 
 // Get all tasks for progress calculation  
@@ -170,6 +204,33 @@ const getTasksByDay = (dayNumber) => {
   return tasksByDay[dayNumber] || tasksByDay[1];
 };
 
+// Get tasks for a goal template
+const getTasksForGoal = (goalId, category) => {
+  switch (category) {
+    case GOAL_CATEGORIES.VISA:
+      if (goalId === 'visa-canada') {
+        return getTasksByDay(1); // Return first day tasks as example
+      }
+      // Add other visa types here
+      return [];
+    
+    case GOAL_CATEGORIES.WORK:
+      return WORK_TASKS;
+    
+    case GOAL_CATEGORIES.HEALTH:
+      return PERSONAL_TASKS.filter(t => t.category === GOAL_CATEGORIES.HEALTH);
+    
+    case GOAL_CATEGORIES.PERSONAL:
+      return PERSONAL_TASKS.filter(t => t.category === GOAL_CATEGORIES.PERSONAL);
+    
+    case GOAL_CATEGORIES.LEARNING:
+      return PERSONAL_TASKS.filter(t => t.category === GOAL_CATEGORIES.LEARNING);
+    
+    default:
+      return [];
+  }
+};
+
 // Header Component - Now shows contextual greeting
 const DashboardHeader = ({ motivationalQuote }) => (
   <div className="dashboard-header-minimal">
@@ -249,8 +310,209 @@ const TipCard = ({ card }) => (
   </div>
 );
 
+// Goal Manager Component
+const GoalManager = ({ activeGoals, onGoalsUpdate, completedTasks }) => {
+  const [showAddGoal, setShowAddGoal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  
+  const handleAddGoal = () => {
+    if (selectedTemplate && selectedCategory) {
+      const newGoal = {
+        id: selectedTemplate.id,
+        name: selectedTemplate.name,
+        category: selectedCategory,
+        description: selectedTemplate.description,
+        active: true,
+        tasks: getTasksForGoal(selectedTemplate.id, selectedCategory),
+        createdAt: new Date().toISOString()
+      };
+      
+      const updatedGoals = [...activeGoals, newGoal];
+      onGoalsUpdate(updatedGoals);
+      
+      // Reset form
+      setShowAddGoal(false);
+      setSelectedCategory('');
+      setSelectedTemplate(null);
+    }
+  };
+  
+  const handleToggleGoal = (goalId) => {
+    const updatedGoals = activeGoals.map(goal => 
+      goal.id === goalId ? { ...goal, active: !goal.active } : goal
+    );
+    onGoalsUpdate(updatedGoals);
+  };
+  
+  const handleDeleteGoal = (goalId) => {
+    if (window.confirm('¿Estás seguro de eliminar este objetivo?')) {
+      const updatedGoals = activeGoals.filter(goal => goal.id !== goalId);
+      onGoalsUpdate(updatedGoals);
+    }
+  };
+  
+  return (
+    <div className="goal-manager">
+      {/* Active Goals List */}
+      <div className="active-goals-section">
+        <div className="section-header">
+          <h3 className="section-title">Mis Objetivos Activos</h3>
+          <button 
+            className="add-goal-button"
+            onClick={() => setShowAddGoal(true)}
+          >
+            <Plus size={20} />
+            <span>Agregar Objetivo</span>
+          </button>
+        </div>
+        
+        <div className="goals-grid">
+          {activeGoals.map(goal => {
+            const config = CATEGORY_CONFIG[goal.category];
+            const goalTasks = goal.tasks || [];
+            const completedGoalTasks = goalTasks.filter(task => 
+              completedTasks.includes(task.id)
+            );
+            const progress = goalTasks.length > 0 
+              ? Math.round((completedGoalTasks.length / goalTasks.length) * 100)
+              : 0;
+            
+            return (
+              <div key={goal.id} className={`goal-card ${!goal.active ? 'inactive' : ''}`}>
+                <div className="goal-card-header">
+                  <span className="goal-icon">{config.icon}</span>
+                  <div className="goal-actions">
+                    <button 
+                      className="goal-toggle"
+                      onClick={() => handleToggleGoal(goal.id)}
+                      title={goal.active ? 'Desactivar' : 'Activar'}
+                    >
+                      <Settings size={16} />
+                    </button>
+                    <button 
+                      className="goal-delete"
+                      onClick={() => handleDeleteGoal(goal.id)}
+                      title="Eliminar objetivo"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+                
+                <h4 className="goal-name">{goal.name}</h4>
+                <p className="goal-description">{goal.description}</p>
+                
+                <div className="goal-progress">
+                  <div className="goal-progress-bar">
+                    <div 
+                      className="goal-progress-fill"
+                      style={{ 
+                        width: `${progress}%`,
+                        background: `linear-gradient(to right, ${config.gradient.split(' ')[0].replace('from-', '#')}, ${config.gradient.split(' ')[2].replace('to-', '#')})`
+                      }}
+                    />
+                  </div>
+                  <span className="goal-progress-text">{progress}% completado</span>
+                </div>
+                
+                <div className="goal-stats">
+                  <span>{completedGoalTasks.length}/{goalTasks.length} tareas</span>
+                  <span className={`goal-status ${goal.active ? 'active' : 'inactive'}`}>
+                    {goal.active ? 'Activo' : 'Pausado'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Add Goal Modal */}
+      {showAddGoal && (
+        <div className="modal-overlay" onClick={() => setShowAddGoal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Agregar Nuevo Objetivo</h3>
+              <button 
+                className="modal-close"
+                onClick={() => setShowAddGoal(false)}
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {/* Category Selection */}
+              <div className="form-group">
+                <label>Selecciona una categoría:</label>
+                <div className="category-grid">
+                  {Object.entries(CATEGORY_CONFIG).map(([key, config]) => (
+                    <button
+                      key={key}
+                      className={`category-option ${selectedCategory === key ? 'selected' : ''}`}
+                      onClick={() => {
+                        setSelectedCategory(key);
+                        setSelectedTemplate(null);
+                      }}
+                    >
+                      <span className="category-option-icon">{config.icon}</span>
+                      <span className="category-option-name">{key}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Template Selection */}
+              {selectedCategory && (
+                <div className="form-group">
+                  <label>Elige un objetivo:</label>
+                  <div className="template-list">
+                    {GOAL_TEMPLATES[selectedCategory]?.map(template => (
+                      <button
+                        key={template.id}
+                        className={`template-option ${selectedTemplate?.id === template.id ? 'selected' : ''}`}
+                        onClick={() => setSelectedTemplate(template)}
+                        disabled={activeGoals.some(g => g.id === template.id)}
+                      >
+                        <div className="template-info">
+                          <h4>{template.name}</h4>
+                          <p>{template.description}</p>
+                        </div>
+                        {activeGoals.some(g => g.id === template.id) && (
+                          <span className="template-status">Ya agregado</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="modal-footer">
+              <button 
+                className="modal-button cancel"
+                onClick={() => setShowAddGoal(false)}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="modal-button confirm"
+                onClick={handleAddGoal}
+                disabled={!selectedTemplate || !selectedCategory}
+              >
+                Agregar Objetivo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Progress View Component - Enhanced for multiple goals
-const ProgressView = ({ completedTasks, activeGoals, userName }) => {
+const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) => {
   const allTasks = getAllTasks(activeGoals);
   const totalTasks = allTasks.length;
   const completedCount = completedTasks.length;
@@ -328,7 +590,7 @@ const ProgressView = ({ completedTasks, activeGoals, userName }) => {
             <Target size={24} />
           </div>
           <div className="stat-content">
-            <span className="stat-value">{activeGoals.length}</span>
+            <span className="stat-value">{activeGoals.filter(g => g.active).length}</span>
             <span className="stat-label">Objetivos activos</span>
           </div>
         </div>
@@ -363,6 +625,13 @@ const ProgressView = ({ completedTasks, activeGoals, userName }) => {
           </div>
         </div>
       </div>
+      
+      {/* Goal Manager */}
+      <GoalManager 
+        activeGoals={activeGoals}
+        onGoalsUpdate={onGoalsUpdate}
+        completedTasks={completedTasks}
+      />
       
       {/* Progress by Category */}
       <div className="category-progress">
@@ -613,6 +882,18 @@ const Dashboard = () => {
       category: task?.category,
       timeContext: getCurrentTimeContext(),
       progress 
+    });
+  };
+
+  // Handle goals update
+  const handleGoalsUpdate = (updatedGoals) => {
+    setActiveGoals(updatedGoals);
+    localStorage.setItem('visa-quest-active-goals', JSON.stringify(updatedGoals));
+    
+    // Track goal changes
+    analyticsService.trackAction(currentUser?.uid, 'goals_updated', { 
+      totalGoals: updatedGoals.length,
+      activeGoals: updatedGoals.filter(g => g.active).length
     });
   };
 
@@ -892,6 +1173,7 @@ const Dashboard = () => {
             completedTasks={completedTasks}
             activeGoals={activeGoals}
             userName={userName}
+            onGoalsUpdate={handleGoalsUpdate}
           />
         ) : (
           /* Profile tab placeholder */
