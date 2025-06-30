@@ -513,6 +513,13 @@ const GoalManager = ({ activeGoals, onGoalsUpdate, completedTasks }) => {
 
 // Progress View Component - Enhanced for multiple goals
 const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) => {
+  // Debug logs
+  console.log('ProgressView rendered with:', {
+    completedTasks,
+    activeGoals,
+    userName
+  });
+
   const allTasks = getAllTasks(activeGoals);
   const totalTasks = allTasks.length;
   const completedCount = completedTasks.length;
@@ -535,12 +542,22 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
     }
   });
   
+  // If there's an error, show an error state
+  if (!activeGoals) {
+    return (
+      <div className="progress-view" style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #1a1a1a, #000)', color: 'white', padding: '20px' }}>
+        <h2>Error loading goals</h2>
+        <p>Please refresh the page</p>
+      </div>
+    );
+  }
+  
   return (
-    <div className="progress-view" style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #1a1a1a, #000)' }}>
+    <div className="progress-view" style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #1a1a1a, #000)', color: 'white' }}>
       {/* Header */}
       <div className="progress-header">
-        <h1 className="progress-title">Tu Progreso Global</h1>
-        <p className="progress-subtitle">¡Hola {userName}! Mira todo lo que has avanzado 🌟</p>
+        <h1 className="progress-title" style={{ color: 'white' }}>Tu Progreso Global</h1>
+        <p className="progress-subtitle" style={{ color: 'white' }}>¡Hola {userName || 'Amiga'}! Mira todo lo que has avanzado 🌟</p>
       </div>
       
       {/* Main Progress Circle */}
@@ -549,7 +566,7 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
           <svg className="progress-ring" width="200" height="200">
             <circle
               className="progress-ring-background"
-              stroke="#e5e7eb"
+              stroke="#2d2d2d"
               strokeWidth="12"
               fill="transparent"
               r="88"
@@ -577,8 +594,8 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
             </defs>
           </svg>
           <div className="progress-circle-content">
-            <span className="progress-percentage">{progressPercentage}%</span>
-            <span className="progress-label">Total</span>
+            <span className="progress-percentage" style={{ color: 'white' }}>{progressPercentage}%</span>
+            <span className="progress-label" style={{ color: 'white' }}>Total</span>
           </div>
         </div>
       </div>
@@ -590,8 +607,8 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
             <Target size={24} />
           </div>
           <div className="stat-content">
-            <span className="stat-value">{activeGoals.filter(g => g.active).length}</span>
-            <span className="stat-label">Objetivos activos</span>
+            <span className="stat-value" style={{ color: 'white' }}>{activeGoals.filter(g => g.active).length}</span>
+            <span className="stat-label" style={{ color: 'white' }}>Objetivos activos</span>
           </div>
         </div>
         
@@ -600,8 +617,8 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
             <CheckCircle size={24} />
           </div>
           <div className="stat-content">
-            <span className="stat-value">{completedCount}</span>
-            <span className="stat-label">Tareas completadas</span>
+            <span className="stat-value" style={{ color: 'white' }}>{completedCount}</span>
+            <span className="stat-label" style={{ color: 'white' }}>Tareas completadas</span>
           </div>
         </div>
         
@@ -610,8 +627,8 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
             <TrendingUp size={24} />
           </div>
           <div className="stat-content">
-            <span className="stat-value">{totalTasks - completedCount}</span>
-            <span className="stat-label">Tareas pendientes</span>
+            <span className="stat-value" style={{ color: 'white' }}>{totalTasks - completedCount}</span>
+            <span className="stat-label" style={{ color: 'white' }}>Tareas pendientes</span>
           </div>
         </div>
         
@@ -620,8 +637,8 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
             <Award size={24} />
           </div>
           <div className="stat-content">
-            <span className="stat-value">{Object.keys(progressByCategory).length}</span>
-            <span className="stat-label">Categorías activas</span>
+            <span className="stat-value" style={{ color: 'white' }}>{Object.keys(progressByCategory).length}</span>
+            <span className="stat-label" style={{ color: 'white' }}>Categorías activas</span>
           </div>
         </div>
       </div>
@@ -636,14 +653,14 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
       {/* Progress by Category */}
       {Object.keys(progressByCategory).length > 0 && (
         <div className="category-progress">
-          <h3 className="section-title">Progreso por Categoría</h3>
+          <h3 className="section-title" style={{ color: 'white' }}>Progreso por Categoría</h3>
           {Object.entries(progressByCategory).map(([category, data]) => {
             const config = CATEGORY_CONFIG[category];
             return (
               <div key={category} className="category-progress-item">
                 <div className="category-info">
                   <span className="category-icon">{config.icon}</span>
-                  <span className="category-name">{category}</span>
+                  <span className="category-name" style={{ color: 'white' }}>{category}</span>
                 </div>
                 <div className="category-progress-bar">
                   <div 
@@ -654,7 +671,7 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
                     }}
                   />
                 </div>
-                <span className="category-stats">{data.completed}/{data.total}</span>
+                <span className="category-stats" style={{ color: 'white' }}>{data.completed}/{data.total}</span>
               </div>
             );
           })}
@@ -664,7 +681,7 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
       {/* Motivational Message */}
       <div className="motivation-card">
         <Sparkles size={24} />
-        <p className="motivation-message">
+        <p className="motivation-message" style={{ color: 'white' }}>
           {progressPercentage < 25 && "¡Excelente inicio! Cada tarea completada es un paso hacia tus metas 🌟"}
           {progressPercentage >= 25 && progressPercentage < 50 && "¡Vas por buen camino! Tu constancia está dando frutos 💪"}
           {progressPercentage >= 50 && progressPercentage < 75 && "¡Impresionante! Ya completaste más de la mitad 🎯"}
@@ -728,6 +745,8 @@ const Dashboard = () => {
   const lastTouchRef = useRef(0);
 
   const initializeDashboard = useCallback(async () => {
+    console.log('Initializing dashboard...');
+    
     // Get user name
     const savedName = localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Amiga';
     setUserName(savedName);
@@ -752,6 +771,8 @@ const Dashboard = () => {
 
     // Initialize active goals
     const savedGoals = JSON.parse(localStorage.getItem('visa-quest-active-goals') || '[]');
+    
+    console.log('Saved goals:', savedGoals);
     
     // Default goals if none saved
     if (savedGoals.length === 0) {
@@ -779,6 +800,7 @@ const Dashboard = () => {
         }
       ];
       
+      console.log('Setting default goals:', defaultGoals);
       setActiveGoals(defaultGoals);
       localStorage.setItem('visa-quest-active-goals', JSON.stringify(defaultGoals));
     } else {
@@ -789,6 +811,7 @@ const Dashboard = () => {
         }
         return goal;
       });
+      console.log('Updated goals:', updatedGoals);
       setActiveGoals(updatedGoals);
     }
 
@@ -803,10 +826,12 @@ const Dashboard = () => {
     setMotivationalQuote(getContextualGreeting());
 
     // Track dashboard view
-    analyticsService.trackAction(currentUser?.uid, 'dashboard_view', { 
-      dayNumber: calculatedDay,
-      activeGoals: savedGoals.length || 3
-    });
+    if (analyticsService && analyticsService.trackAction) {
+      analyticsService.trackAction(currentUser?.uid, 'dashboard_view', { 
+        dayNumber: calculatedDay,
+        activeGoals: savedGoals.length || 3
+      });
+    }
   }, [currentUser]);
 
   useEffect(() => {
@@ -864,7 +889,7 @@ const Dashboard = () => {
 
     // Save to Firebase
     const task = cards.find(c => c.id === taskId);
-    if (task) {
+    if (task && progressService && progressService.completeTask) {
       await progressService.completeTask(currentUser?.uid, {
         taskId,
         taskTitle: task.title,
@@ -879,24 +904,29 @@ const Dashboard = () => {
     const progress = Math.round((newCompleted.length / allTasks.length) * 100);
 
     // Track action
-    analyticsService.trackAction(currentUser?.uid, 'task_completed', { 
-      taskId, 
-      category: task?.category,
-      timeContext: getCurrentTimeContext(),
-      progress 
-    });
+    if (analyticsService && analyticsService.trackAction) {
+      analyticsService.trackAction(currentUser?.uid, 'task_completed', { 
+        taskId, 
+        category: task?.category,
+        timeContext: getCurrentTimeContext(),
+        progress 
+      });
+    }
   };
 
   // Handle goals update
   const handleGoalsUpdate = (updatedGoals) => {
+    console.log('Updating goals:', updatedGoals);
     setActiveGoals(updatedGoals);
     localStorage.setItem('visa-quest-active-goals', JSON.stringify(updatedGoals));
     
     // Track goal changes
-    analyticsService.trackAction(currentUser?.uid, 'goals_updated', { 
-      totalGoals: updatedGoals.length,
-      activeGoals: updatedGoals.filter(g => g.active).length
-    });
+    if (analyticsService && analyticsService.trackAction) {
+      analyticsService.trackAction(currentUser?.uid, 'goals_updated', { 
+        totalGoals: updatedGoals.length,
+        activeGoals: updatedGoals.filter(g => g.active).length
+      });
+    }
   };
 
   // Enhanced card navigation with smooth animations
@@ -1043,9 +1073,12 @@ const Dashboard = () => {
 
   // Handle tab change
   const handleTabChange = (tab) => {
+    console.log('Changing tab to:', tab);
     setActiveTab(tab);
     // Track tab change
-    analyticsService.trackAction(currentUser?.uid, 'tab_changed', { tab });
+    if (analyticsService && analyticsService.trackAction) {
+      analyticsService.trackAction(currentUser?.uid, 'tab_changed', { tab });
+    }
   };
 
   // Calculate card transform with drag offset
