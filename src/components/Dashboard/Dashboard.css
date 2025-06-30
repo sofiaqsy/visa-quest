@@ -8,6 +8,37 @@
   touch-action: pan-y;
 }
 
+/* Reset Button */
+.reset-button {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 100px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.reset-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.reset-button svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Cards Wrapper */
 .cards-wrapper {
   position: relative;
@@ -606,6 +637,15 @@
   .nav-hint {
     width: 40px;
     height: 40px;
+  }
+  
+  .reset-button {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  
+  .reset-button span {
+    display: none; /* Hide text on mobile, show only icon */
   }
 }
 
