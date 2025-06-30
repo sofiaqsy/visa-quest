@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { moodService, progressService, analyticsService } from '../../firebase/services';
-import { CheckCircle, Circle, Calendar, Target, Heart, TrendingUp, Clock, Award, ChevronUp, ChevronDown, Sparkles, BookOpen, Camera, FileText, MapPin, CreditCard, Globe, Users, Star } from 'lucide-react';
+import { CheckCircle, Circle, Calendar, Heart, TrendingUp, Award, ChevronUp, ChevronDown, Sparkles, BookOpen, Globe, Users, Star } from 'lucide-react';
 import './Dashboard.css';
 
 // Card types for different activities
