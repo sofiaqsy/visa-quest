@@ -111,7 +111,10 @@ const getTasksByDay = (dayNumber) => {
     ]
   };
   
-  return tasksByDay[dayNumber] || tasksByDay[1];
+  // Always return tasks for the calculated day, cycling through if needed
+  const availableDays = Object.keys(tasksByDay).length;
+  const cycledDay = ((dayNumber - 1) % availableDays) + 1;
+  return tasksByDay[cycledDay] || tasksByDay[1];
 };
 
 // Daily tips
@@ -178,7 +181,7 @@ const getMotivationalQuotes = (mood) => {
   return quotesByMood[mood] || quotesByMood.default;
 };
 
-// Get all cards for a day
+// Get all cards for a day with infinite content
 const getDailyCards = (dayNumber, completedTasks) => {
   const cards = [];
   const tasks = getTasksByDay(dayNumber);
@@ -208,7 +211,11 @@ const getDailyCards = (dayNumber, completedTasks) => {
     });
   }
   
-  return cards;
+  // Triple the cards to create seamless infinite scroll
+  const baseCards = [...cards];
+  const infiniteCards = [...baseCards, ...baseCards, ...baseCards];
+  
+  return { baseCards, infiniteCards };
 };
 
 // Header Component - Minimal with just motivation
@@ -313,6 +320,7 @@ const Dashboard = () => {
   const [dayNumber, setDayNumber] = useState(1);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [cards, setCards] = useState([]);
+  const [baseCardsLength, setBaseCardsLength] = useState(0);
   const [motivationalQuote, setMotivationalQuote] = useState('');
   const [activeTab, setActiveTab] = useState('home');
   
@@ -326,22 +334,28 @@ const Dashboard = () => {
     const savedMood = localStorage.getItem('visa-quest-daily-mood');
     let moodValue = 'default';
     if (savedMood) {
-      const parsed = JSON.parse(savedMood);
-      setTodayMood(parsed);
-      moodValue = parsed.mood || 'default';
+      try {
+        const parsed = JSON.parse(savedMood);
+        setTodayMood(parsed);
+        moodValue = parsed.mood || 'default';
+      } catch (e) {
+        console.error('Error parsing mood:', e);
+      }
     }
 
     // Calculate day number
     const startDate = localStorage.getItem('visa-quest-start-date');
+    let calculatedDay = 1;
     if (startDate) {
       const start = new Date(startDate);
       const today = new Date();
       const diffTime = Math.abs(today - start);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      setDayNumber(Math.min(diffDays, 21));
+      calculatedDay = Math.min(diffDays, 21);
     } else {
       localStorage.setItem('visa-quest-start-date', new Date().toISOString());
     }
+    setDayNumber(calculatedDay);
 
     // Get completed tasks
     const completed = JSON.parse(localStorage.getItem('visa-quest-completed-tasks') || '[]');
@@ -352,8 +366,8 @@ const Dashboard = () => {
     setMotivationalQuote(quotes[Math.floor(Math.random() * quotes.length)]);
 
     // Track dashboard view
-    analyticsService.trackAction(currentUser?.uid, 'dashboard_view', { dayNumber });
-  }, [currentUser, dayNumber]);
+    analyticsService.trackAction(currentUser?.uid, 'dashboard_view', { dayNumber: calculatedDay });
+  }, [currentUser]);
 
   useEffect(() => {
     initializeDashboard();
@@ -361,8 +375,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     // Generate cards when data is ready
-    const dailyCards = getDailyCards(dayNumber, completedTasks);
-    setCards(dailyCards);
+    const { baseCards, infiniteCards } = getDailyCards(dayNumber, completedTasks);
+    setCards(infiniteCards);
+    setBaseCardsLength(baseCards.length);
+    
+    // Start in the middle set to enable seamless looping
+    setCurrentCardIndex(baseCards.length);
   }, [dayNumber, completedTasks]);
 
   // Rotate motivational quote every 10 seconds based on mood
@@ -403,6 +421,22 @@ const Dashboard = () => {
     analyticsService.trackAction(currentUser?.uid, 'task_completed', { taskId, dayNumber, progress });
   };
 
+  // Handle card navigation with seamless infinite loop
+  const navigateToCard = useCallback((newIndex) => {
+    setCurrentCardIndex(newIndex);
+    
+    // Reset position when reaching boundaries for seamless loop
+    setTimeout(() => {
+      if (newIndex >= baseCardsLength * 2) {
+        // At end of second set, jump to middle set
+        setCurrentCardIndex(baseCardsLength + (newIndex % baseCardsLength));
+      } else if (newIndex < baseCardsLength) {
+        // At beginning of first set, jump to middle set
+        setCurrentCardIndex(baseCardsLength + newIndex);
+      }
+    }, 400); // After animation completes
+  }, [baseCardsLength]);
+
   // Touch handlers for swipe
   const handleTouchStart = (e) => {
     setTouchStart(e.touches[0].clientY);
@@ -419,25 +453,31 @@ const Dashboard = () => {
     const isSwipeUp = distance > 50;
     const isSwipeDown = distance < -50;
     
-    if (isSwipeUp) {
-      // Swipe up - next card with infinite loop
-      setCurrentCardIndex((prev) => (prev + 1) % cards.length);
+    if (isSwipeUp && cards.length > 0) {
+      // Swipe up - next card
+      navigateToCard(currentCardIndex + 1);
     }
     
-    if (isSwipeDown) {
-      // Swipe down - previous card with infinite loop
-      setCurrentCardIndex((prev) => (prev - 1 + cards.length) % cards.length);
+    if (isSwipeDown && cards.length > 0) {
+      // Swipe down - previous card
+      navigateToCard(currentCardIndex - 1);
     }
+    
+    // Reset touch positions
+    setTouchStart(0);
+    setTouchEnd(0);
   };
 
   // Mouse wheel handler
   const handleWheel = (e) => {
+    if (cards.length === 0) return;
+    
     if (e.deltaY > 0) {
-      // Scroll down - next card with infinite loop
-      setCurrentCardIndex((prev) => (prev + 1) % cards.length);
+      // Scroll down - next card
+      navigateToCard(currentCardIndex + 1);
     } else if (e.deltaY < 0) {
-      // Scroll up - previous card with infinite loop
-      setCurrentCardIndex((prev) => (prev - 1 + cards.length) % cards.length);
+      // Scroll up - previous card
+      navigateToCard(currentCardIndex - 1);
     }
   };
 
@@ -499,23 +539,31 @@ const Dashboard = () => {
         
         {/* Card Stack */}
         <div className="cards-wrapper">
-          {cards.map((card, index) => (
-            <div
-              key={card.id}
-              className={`card-container ${index === currentCardIndex ? 'active' : ''} ${
-                index < currentCardIndex ? 'passed' : ''
-              }`}
-              style={{
-                transform: `translateY(${(index - currentCardIndex) * 100}%)`,
-                opacity: Math.abs(index - currentCardIndex) > 1 ? 0 : 1,
-                pointerEvents: index === currentCardIndex ? 'auto' : 'none'
-              }}
-            >
-              <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-                {renderCard(card)}
+          {cards.length > 0 ? (
+            cards.map((card, index) => (
+              <div
+                key={`${card.id}-${index}`}
+                className={`card-container ${index === currentCardIndex ? 'active' : ''} ${
+                  index < currentCardIndex ? 'passed' : ''
+                }`}
+                style={{
+                  transform: `translateY(${(index - currentCardIndex) * 100}%)`,
+                  opacity: Math.abs(index - currentCardIndex) > 1 ? 0 : 1,
+                  pointerEvents: index === currentCardIndex ? 'auto' : 'none'
+                }}
+              >
+                <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
+                  {renderCard(card)}
+                </div>
               </div>
+            ))
+          ) : (
+            // Loading state
+            <div className="loading-state">
+              <Sparkles size={48} className="loading-icon" />
+              <p>Preparando tus tareas...</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
       
