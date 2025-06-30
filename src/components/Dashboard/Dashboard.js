@@ -799,6 +799,7 @@ const Dashboard = () => {
   const [activeGoals, setActiveGoals] = useState([]);
   const [userPreferences, setUserPreferences] = useState(DEFAULT_USER_PREFERENCES);
   const [isChangingTab, setIsChangingTab] = useState(false);
+  const [savedCardIndex, setSavedCardIndex] = useState(0); // Store card position when leaving home tab
   
   // Enhanced touch handling with velocity tracking
   const [touchStart, setTouchStart] = useState(0);
@@ -1138,7 +1139,7 @@ const Dashboard = () => {
     }
   };
 
-  // Handle tab change - FIXED to prevent black screen
+  // Handle tab change - Modified to keep card position
   const handleTabChange = (tab) => {
     console.log('Changing tab to:', tab);
     
@@ -1146,12 +1147,17 @@ const Dashboard = () => {
     if (isChangingTab) return;
     
     setIsChangingTab(true);
+    
+    // Save current card index when leaving home tab
+    if (activeTab === 'home' && tab !== 'home') {
+      setSavedCardIndex(currentCardIndex);
+    }
+    
     setActiveTab(tab);
     
-    // Reset card navigation state when returning to home
+    // Restore card position when returning to home
     if (tab === 'home') {
       // Reset states immediately
-      setCurrentCardIndex(0);
       setDragOffset(0);
       setIsTransitioning(false);
       setIsDragging(false);
@@ -1168,15 +1174,22 @@ const Dashboard = () => {
             card.style.transition = 'none';
           });
           
-          // Then reset positions
+          // Then reset positions to saved position
           requestAnimationFrame(() => {
+            setCurrentCardIndex(savedCardIndex);
+            
             cardElements.forEach((card, index) => {
-              if (index === 0) {
+              const offset = (index - savedCardIndex) * 100;
+              
+              if (index === savedCardIndex) {
                 card.style.transform = 'translateY(0) scale(1)';
                 card.style.opacity = '1';
-              } else {
-                card.style.transform = 'translateY(100%) scale(0.95)';
+              } else if (index < savedCardIndex) {
+                card.style.transform = `translateY(${offset}%) scale(0.95)`;
                 card.style.opacity = '0';
+              } else {
+                card.style.transform = `translateY(${offset}%) scale(0.95)`;
+                card.style.opacity = index === savedCardIndex + 1 ? '0.8' : '0';
               }
             });
             
@@ -1189,6 +1202,7 @@ const Dashboard = () => {
             });
           });
         } else {
+          setCurrentCardIndex(savedCardIndex);
           setIsChangingTab(false);
         }
       });
