@@ -1,242 +1,333 @@
 import React, { useState, useEffect } from 'react';
 import { registerSW, requestNotificationPermission } from './hooks/usePWA';
-import PWAInstallButton, { OfflineIndicator, PWAFeatures, InstallPrompt } from './components/PWAInstallButton';
+import PWAInstallButton, { OfflineIndicator, InstallPrompt } from './components/PWAInstallButton';
 
-// Floating elements component
-const FloatingElements = () => {
-  const icons = ['✈️', '🏔️', '🍁', '📋', '🎯'];
-  
-  return (
-    <div className="absolute inset-0 pointer-events-none opacity-10 overflow-hidden">
-      {icons.map((icon, index) => (
-        <div
-          key={index}
-          className={`absolute text-2xl animate-bounce float-slow`}
-          style={{
-            top: `${20 + (index * 15)}%`,
-            left: `${10 + (index % 2 ? 70 : 0)}%`,
-            animationDelay: `${index * 1.2}s`,
-            animationDuration: `${6 + index}s`
-          }}
-        >
-          {icon}
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// Social proof stats component
-const SocialProofStats = () => {
-  const stats = [
-    { value: '95%', label: 'Aprobación', color: 'text-yellow-300' },
-    { value: '156', label: 'Visas exitosas', color: 'text-yellow-300' },
-    { value: '21', label: 'Días promedio', color: 'text-yellow-300' }
-  ];
-
-  return (
-    <div className="glass-effect rounded-2xl p-6 mb-8 slide-up">
-      <div className="grid grid-cols-3 gap-4 text-center">
-        {stats.map((stat, index) => (
-          <div key={index} className="space-y-1">
-            <div className={`text-3xl font-black ${stat.color}`}>
-              {stat.value}
-            </div>
-            <div className="text-sm text-blue-100 font-medium">
-              {stat.label}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Trust indicators component
-const TrustIndicators = () => {
-  const indicators = [
-    { icon: '🔒', text: '100% Seguro', color: 'text-green-500' },
-    { icon: '⭐', text: '4.9/5 rating', color: 'text-blue-500' },
-    { icon: '👥', text: '1,200+ usuarios', color: 'text-purple-500' }
-  ];
-
-  return (
-    <div className="flex items-center justify-center space-x-6 text-xs text-gray-500 mt-6">
-      {indicators.map((item, index) => (
-        <div key={index} className="flex items-center space-x-1">
-          <span className={item.color}>{item.icon}</span>
-          <span className="font-medium">{item.text}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// Main welcome screen component
+// Gentle welcome screen component
 const WelcomeScreen = ({ onStart }) => {
+  const [currentStep, setCurrentStep] = useState('greeting'); // greeting, mood, ready
+  const [selectedMood, setSelectedMood] = useState(null);
+  const [userName, setUserName] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
     setIsLoaded(true);
+    // Check if user has a name saved
+    const savedName = localStorage.getItem('visa-quest-user-name');
+    if (savedName) {
+      setUserName(savedName);
+    }
     
-    // Show install prompt after 3 seconds
-    const timer = setTimeout(() => {
+    // Request notification permission gently
+    setTimeout(() => {
+      requestNotificationPermission();
+    }, 2000);
+
+    // Show install prompt after user interaction
+    setTimeout(() => {
       setShowInstallPrompt(true);
-    }, 3000);
-
-    // Request notification permission on load
-    requestNotificationPermission().then(granted => {
-      if (granted) {
-        console.log('VisaQuest: Notification permission granted');
-      }
-    });
-
-    return () => clearTimeout(timer);
+    }, 10000);
   }, []);
 
-  return (
-    <div className="min-h-screen bg-white overflow-hidden">
-      {/* Offline indicator */}
-      <OfflineIndicator />
-      
-      {/* Hero Section */}
-      <div className="gradient-hero text-white text-center relative h-screen flex flex-col">
-        <FloatingElements />
+  const moods = [
+    { emoji: '😊', label: 'Bien', value: 'good', message: '¡Qué bueno! Aprovechemos esa energía positiva' },
+    { emoji: '😐', label: 'Normal', value: 'okay', message: 'Perfecto, vamos paso a paso sin presión' },
+    { emoji: '😟', label: 'Agobiada', value: 'overwhelmed', message: 'Te entiendo, hagamos esto juntas sin estrés' },
+    { emoji: '🤔', label: 'Confundida', value: 'confused', message: 'No te preocupes, te voy a guiar en todo' },
+    { emoji: '😰', label: 'Ansiosa', value: 'anxious', message: 'Respira hondo, vamos a organizarlo todo juntas' }
+  ];
+
+  const handleNameSubmit = (e) => {
+    e.preventDefault();
+    if (userName.trim()) {
+      localStorage.setItem('visa-quest-user-name', userName.trim());
+      setCurrentStep('mood');
+    }
+  };
+
+  const handleMoodSelect = (mood) => {
+    setSelectedMood(mood);
+    localStorage.setItem('visa-quest-daily-mood', JSON.stringify({
+      mood: mood.value,
+      date: new Date().toDateString(),
+      message: mood.message
+    }));
+    setTimeout(() => {
+      setCurrentStep('ready');
+    }, 1500);
+  };
+
+  const handleStart = () => {
+    onStart();
+  };
+
+  // Greeting Step
+  if (currentStep === 'greeting') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col">
+        <OfflineIndicator />
         
-        {/* Status bar simulation */}
-        <div className="flex justify-between items-center p-4 text-sm font-semibold">
-          <span>9:41</span>
-          <span>🔋 100%</span>
-        </div>
-        
-        {/* Main content */}
-        <div className="flex-1 flex flex-col justify-center px-6 relative z-10">
-          {/* Main emoji */}
-          <div className={`text-7xl mb-6 ${isLoaded ? 'animate-bounce-slow' : ''}`}>
-            🇨🇦
+        <div className="flex-1 flex flex-col justify-center px-6 py-12">
+          <div className="max-w-md mx-auto text-center">
+            
+            {/* Warm welcome */}
+            <div className={`mb-8 ${isLoaded ? 'slide-up' : 'opacity-0'}`}>
+              <div className="text-6xl mb-4">👋</div>
+              <h1 className="text-3xl font-bold text-gray-800 mb-4 leading-tight">
+                ¡Hola! Soy tu compañera en esta aventura
+              </h1>
+              <p className="text-lg text-gray-600 mb-8">
+                Juntas vamos a conseguir tu visa a Canadá de manera organizada y sin estrés
+              </p>
+            </div>
+
+            {/* Name input */}
+            <div className={`bg-white rounded-2xl p-6 shadow-lg mb-6 ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
+                 style={{ animationDelay: '0.3s' }}>
+              <div className="text-2xl mb-4">🌟</div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                Para empezar, ¿cómo te gusta que te llamen?
+              </h3>
+              
+              <form onSubmit={handleNameSubmit} className="space-y-4">
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="Escribe tu nombre..."
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:outline-none text-lg text-center"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={!userName.trim()}
+                  className="w-full bg-blue-500 text-white py-3 px-6 rounded-xl font-semibold text-lg hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  Continuar ✨
+                </button>
+              </form>
+            </div>
+
+            {/* Gentle info about the journey */}
+            <div className={`text-sm text-gray-500 ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
+                 style={{ animationDelay: '0.6s' }}>
+              <p>🗓️ Te acompañaré durante 21 días</p>
+              <p>📱 Funciona sin internet</p>
+              <p>🤗 Siempre a tu ritmo</p>
+            </div>
           </div>
-          
-          {/* Main headline */}
-          <h1 className={`text-4xl font-black mb-6 leading-tight ${isLoaded ? 'slide-up' : 'opacity-0'}`}>
-            ¡Tu visa a<br/>
-            <span className="text-yellow-300">Canadá</span> en<br/>
-            <span className="text-yellow-300">21 días</span>!
-          </h1>
-          
-          {/* Subtitle */}
-          <p className={`text-xl mb-8 text-blue-100 font-medium ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
-             style={{ animationDelay: '0.2s' }}>
-            Sin estrés • Sin confusión • Sin rechazos
-          </p>
-          
-          {/* Social proof */}
-          <div style={{ animationDelay: '0.4s' }}>
-            <SocialProofStats />
-          </div>
-        </div>
-        
-        {/* Bottom curve */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" className="w-full h-12 text-white fill-current">
-            <path d="M0,96L80,85.3C160,75,320,53,480,58.7C640,64,800,96,960,96C1120,96,1280,64,1360,48L1440,32L1440,120L1360,120C1280,120,1120,120,960,120C800,120,640,120,480,120C320,120,160,120,80,120L0,120Z"></path>
-          </svg>
         </div>
       </div>
-      
-      {/* CTA Section */}
-      <div className="bg-white px-6 pb-8 -mt-12 relative z-20">
-        {/* Main CTA Button */}
-        <button 
-          onClick={onStart}
-          className={`w-full bg-gradient-to-r from-yellow-400 to-orange-400 text-gray-900 py-5 px-6 rounded-2xl font-black text-lg mb-6 pulse-glow transform hover:scale-105 transition-all duration-300 ${isLoaded ? 'slide-up' : 'opacity-0'}`}
-          style={{ animationDelay: '0.6s' }}
-        >
-          🚀 ¡Comenzar Mi Visa GRATIS!
-        </button>
+    );
+  }
+
+  // Mood Check Step
+  if (currentStep === 'mood') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col">
+        <OfflineIndicator />
         
-        {/* PWA Install Button */}
-        <div className={`mb-6 flex justify-center ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
-             style={{ animationDelay: '0.7s' }}>
-          <PWAInstallButton />
-        </div>
-        
-        {/* Secondary options */}
-        <div className={`space-y-3 mb-6 ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
-             style={{ animationDelay: '0.8s' }}>
-          <button className="w-full bg-gray-50 border-2 border-gray-200 text-gray-600 py-4 px-6 rounded-xl font-semibold text-sm hover:border-blue-300 hover:bg-blue-50 transition-colors duration-300">
-            🇺🇸 USA (Próximamente)
-          </button>
-          <button className="w-full bg-gray-50 border-2 border-gray-200 text-gray-600 py-4 px-6 rounded-xl font-semibold text-sm hover:border-blue-300 hover:bg-blue-50 transition-colors duration-300">
-            🇪🇺 Europa (Próximamente)
-          </button>
-        </div>
-        
-        {/* PWA Features showcase */}
-        <div className={`mb-6 ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
-             style={{ animationDelay: '0.9s' }}>
-          <PWAFeatures />
-        </div>
-        
-        {/* Trust indicators */}
-        <div style={{ animationDelay: '1s' }}>
-          <TrustIndicators />
+        <div className="flex-1 flex flex-col justify-center px-6 py-12">
+          <div className="max-w-md mx-auto">
+            
+            {/* Personal greeting */}
+            <div className="text-center mb-8 slide-up">
+              <div className="text-5xl mb-4">💝</div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                ¡Hola {userName}!
+              </h2>
+              <p className="text-lg text-gray-600">
+                Antes de empezar, me gustaría saber...
+              </p>
+            </div>
+
+            {/* Mood selection */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg slide-up" style={{ animationDelay: '0.3s' }}>
+              <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">
+                ¿Cómo te sientes hoy con el tema de tu visa?
+              </h3>
+              
+              <div className="space-y-3">
+                {moods.map((mood, index) => (
+                  <button
+                    key={mood.value}
+                    onClick={() => handleMoodSelect(mood)}
+                    className={`w-full p-4 rounded-xl border-2 text-left hover:border-blue-300 hover:bg-blue-50 transition-all ${
+                      selectedMood?.value === mood.value ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                    }`}
+                    style={{ animationDelay: `${0.1 * index}s` }}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <span className="text-3xl">{mood.emoji}</span>
+                      <div>
+                        <div className="font-semibold text-gray-800">{mood.label}</div>
+                        <div className="text-sm text-gray-600">{mood.message}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-center text-sm text-gray-500 mt-4">
+              <p>💡 Esta información me ayuda a personalizar tu experiencia</p>
+            </div>
+          </div>
         </div>
       </div>
-      
-      {/* Install prompt */}
-      {showInstallPrompt && (
-        <InstallPrompt onDismiss={() => setShowInstallPrompt(false)} />
-      )}
-    </div>
-  );
+    );
+  }
+
+  // Ready to start step
+  if (currentStep === 'ready') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col">
+        <OfflineIndicator />
+        
+        <div className="flex-1 flex flex-col justify-center px-6 py-12">
+          <div className="max-w-md mx-auto">
+            
+            {/* Personalized encouragement */}
+            <div className="text-center mb-8 slide-up">
+              <div className="text-6xl mb-4">🇨🇦</div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                ¡Perfecto, {userName}!
+              </h2>
+              <p className="text-lg text-gray-600 mb-6">
+                {selectedMood?.message}
+              </p>
+            </div>
+
+            {/* Journey overview */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg mb-6 slide-up" style={{ animationDelay: '0.3s' }}>
+              <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">
+                Tu plan personalizado de 21 días
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-center space-x-4 p-3 bg-green-50 rounded-xl">
+                  <span className="text-2xl">📋</span>
+                  <div>
+                    <div className="font-semibold text-green-800">Semana 1: Organización</div>
+                    <div className="text-sm text-green-600">Documentos y preparación básica</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4 p-3 bg-blue-50 rounded-xl">
+                  <span className="text-2xl">✈️</span>
+                  <div>
+                    <div className="font-semibold text-blue-800">Semana 2: Planificación</div>
+                    <div className="text-sm text-blue-600">Itinerario y reservas</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4 p-3 bg-purple-50 rounded-xl">
+                  <span className="text-2xl">🚀</span>
+                  <div>
+                    <div className="font-semibold text-purple-800">Semana 3: Aplicación</div>
+                    <div className="text-sm text-purple-600">Envío y seguimiento</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Supportive features */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg mb-6 slide-up" style={{ animationDelay: '0.6s' }}>
+              <h4 className="font-semibold text-gray-800 mb-3 text-center">Estarás acompañada con:</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                  <div className="text-xl mb-1">💝</div>
+                  <div className="font-medium">Check-ins diarios</div>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <div className="text-xl mb-1">👥</div>
+                  <div className="font-medium">Comunidad de apoyo</div>
+                </div>
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-xl mb-1">🎯</div>
+                  <div className="font-medium">Metas pequeñas</div>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg">
+                  <div className="text-xl mb-1">🔔</div>
+                  <div className="font-medium">Recordatorios suaves</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Call to action */}
+            <button
+              onClick={handleStart}
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-green-600 hover:to-blue-600 transform hover:scale-105 transition-all duration-300 pulse-glow slide-up"
+              style={{ animationDelay: '0.9s' }}
+            >
+              ¡Empecemos juntas! 🌟
+            </button>
+
+            {/* PWA Install Button */}
+            <div className="mt-4 flex justify-center">
+              <PWAInstallButton className="text-sm" />
+            </div>
+
+            <div className="text-center text-xs text-gray-500 mt-4">
+              <p>💚 Recuerda: vas a tu ritmo, sin presión</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Install prompt */}
+        {showInstallPrompt && (
+          <InstallPrompt onDismiss={() => setShowInstallPrompt(false)} />
+        )}
+      </div>
+    );
+  }
 };
 
-// Enhanced dashboard with PWA features
+// Enhanced dashboard with daily mood check
 const Dashboard = ({ onBack }) => {
+  const [userName] = useState(localStorage.getItem('visa-quest-user-name') || 'Viajera');
+  const [todayMood] = useState(() => {
+    const saved = localStorage.getItem('visa-quest-daily-mood');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.date === new Date().toDateString()) {
+        return parsed;
+      }
+    }
+    return null;
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <OfflineIndicator />
       
       <div className="p-6">
         <div className="max-w-md mx-auto">
+          
+          {/* Warm daily greeting */}
           <div className="bg-white rounded-2xl p-6 shadow-lg text-center mb-6">
-            <div className="text-4xl mb-4">🎉</div>
+            <div className="text-4xl mb-4">🌅</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              ¡Bienvenida a VisaQuest!
+              ¡Buenos días, {userName}!
             </h2>
-            <p className="text-gray-600 mb-6">
-              Esta será tu pantalla principal donde verás tu progreso, tareas diarias y más.
-            </p>
             
-            {/* PWA Status indicators */}
-            <div className="bg-blue-50 rounded-xl p-4 mb-6">
-              <h3 className="font-semibold text-blue-800 mb-3">📱 Estado de la App</h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex items-center justify-center space-x-2 p-2 bg-white rounded-lg">
-                  <span>🔄</span>
-                  <span>Offline Ready</span>
-                </div>
-                <div className="flex items-center justify-center space-x-2 p-2 bg-white rounded-lg">
-                  <span>🔔</span>
-                  <span>Notificaciones</span>
-                </div>
-                <div className="flex items-center justify-center space-x-2 p-2 bg-white rounded-lg">
-                  <span>📸</span>
-                  <span>Cámara</span>
-                </div>
-                <div className="flex items-center justify-center space-x-2 p-2 bg-white rounded-lg">
-                  <span>📱</span>
-                  <span>App Nativa</span>
-                </div>
+            {todayMood && (
+              <div className="bg-blue-50 rounded-xl p-4 mb-4">
+                <p className="text-sm text-blue-700">
+                  Hoy te sientes <strong>{todayMood.mood}</strong> y recuerda: {todayMood.message}
+                </p>
               </div>
-            </div>
+            )}
+            
+            <p className="text-gray-600 mb-6">
+              Aquí comenzará tu dashboard personalizado con tu progreso, tareas del día y apoyo continuo.
+            </p>
             
             <button 
               onClick={onBack}
               className="bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
             >
-              ← Volver al Inicio
+              ← Volver al inicio
             </button>
           </div>
         </div>
@@ -251,13 +342,7 @@ function App() {
 
   // Initialize PWA features
   useEffect(() => {
-    // Register service worker
     registerSW();
-    
-    // Set up app shortcuts if installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      console.log('VisaQuest: Running as installed PWA');
-    }
   }, []);
 
   const handleStart = () => {
