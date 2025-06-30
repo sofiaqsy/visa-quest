@@ -79,7 +79,9 @@
 
 .dashboard-content.tab-active {
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* Reset Button */
@@ -467,13 +469,15 @@
   height: 48px;
 }
 
-/* Progress View Styles */
+/* Progress View Styles - UPDATED */
 .progress-view {
   width: 100%;
-  min-height: 100%;
+  min-height: calc(100vh - 130px); /* Account for header and tab bar */
   background: linear-gradient(to bottom, #1a1a1a, #000);
   padding: 20px;
   color: white;
+  position: relative;
+  z-index: 1;
 }
 
 .progress-header {
@@ -485,11 +489,13 @@
   font-size: 32px;
   font-weight: 700;
   margin-bottom: 8px;
+  color: white;
 }
 
 .progress-subtitle {
   font-size: 16px;
   opacity: 0.8;
+  color: white;
 }
 
 /* Progress Circle */
@@ -530,11 +536,13 @@
   font-size: 42px;
   font-weight: 700;
   display: block;
+  color: white;
 }
 
 .progress-label {
   font-size: 14px;
   opacity: 0.8;
+  color: white;
 }
 
 /* Stats Grid */
@@ -576,12 +584,14 @@
 .stat-value {
   font-size: 24px;
   font-weight: 700;
+  color: white;
 }
 
 .stat-label {
   font-size: 12px;
   opacity: 0.8;
   margin-top: 4px;
+  color: white;
 }
 
 /* Goal Manager Styles */
@@ -598,6 +608,13 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+  margin: 0;
 }
 
 .add-goal-button {
@@ -681,12 +698,14 @@
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 8px;
+  color: white;
 }
 
 .goal-description {
   font-size: 14px;
   opacity: 0.8;
   margin-bottom: 16px;
+  color: white;
 }
 
 .goal-progress {
@@ -710,6 +729,7 @@
 .goal-progress-text {
   font-size: 12px;
   opacity: 0.8;
+  color: white;
 }
 
 .goal-stats {
@@ -717,6 +737,7 @@
   justify-content: space-between;
   font-size: 12px;
   opacity: 0.8;
+  color: white;
 }
 
 .goal-status {
@@ -821,6 +842,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
+  color: white;
 }
 
 .category-option:hover {
@@ -862,6 +884,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  color: white;
 }
 
 .template-option:hover {
@@ -889,6 +912,7 @@
   font-size: 14px;
   opacity: 0.8;
   margin: 0;
+  color: white;
 }
 
 .template-status {
@@ -946,6 +970,13 @@
   margin-bottom: 40px;
 }
 
+.category-progress .section-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: white;
+}
+
 .category-progress-item {
   background: rgba(255,255,255,0.05);
   border-radius: 16px;
@@ -971,6 +1002,7 @@
   font-size: 14px;
   font-weight: 500;
   text-transform: capitalize;
+  color: white;
 }
 
 .category-progress-bar {
@@ -992,17 +1024,12 @@
   opacity: 0.8;
   min-width: 40px;
   text-align: right;
+  color: white;
 }
 
 /* Weekly Progress */
 .weekly-progress {
   margin-bottom: 40px;
-}
-
-.section-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 20px;
 }
 
 .week-progress-item {
@@ -1020,10 +1047,12 @@
 
 .week-number {
   font-weight: 600;
+  color: white;
 }
 
 .week-name {
   opacity: 0.8;
+  color: white;
 }
 
 .week-progress-bar {
@@ -1045,6 +1074,7 @@
   font-size: 12px;
   opacity: 0.8;
   text-align: right;
+  color: white;
 }
 
 /* Milestones */
@@ -1084,6 +1114,7 @@
 
 .milestone-name {
   font-size: 14px;
+  color: white;
 }
 
 /* Motivation Card */
@@ -1101,6 +1132,7 @@
 .motivation-message {
   font-size: 16px;
   line-height: 1.6;
+  color: white;
 }
 
 /* Profile Placeholder */
