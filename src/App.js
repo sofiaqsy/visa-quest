@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginForm from './components/Auth/LoginForm';
 import { registerSW, requestNotificationPermission } from './hooks/usePWA';
 import PWAInstallButton, { OfflineIndicator, InstallPrompt } from './components/PWAInstallButton';
+
+// Protected Route component
+const ProtectedRoute = ({ children }) => {
+  const { currentUser } = useAuth();
+  return currentUser ? children : <Navigate to="/login" />;
+};
 
 // Gentle welcome screen component
 const WelcomeScreen = ({ onStart }) => {
@@ -9,6 +18,7 @@ const WelcomeScreen = ({ onStart }) => {
   const [userName, setUserName] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     setIsLoaded(true);
@@ -16,6 +26,8 @@ const WelcomeScreen = ({ onStart }) => {
     const savedName = localStorage.getItem('visa-quest-user-name');
     if (savedName) {
       setUserName(savedName);
+    } else if (currentUser?.displayName) {
+      setUserName(currentUser.displayName);
     }
     
     // Request notification permission gently
@@ -27,7 +39,7 @@ const WelcomeScreen = ({ onStart }) => {
     setTimeout(() => {
       setShowInstallPrompt(true);
     }, 10000);
-  }, []);
+  }, [currentUser]);
 
   const moods = [
     { emoji: '😊', label: 'Bien', value: 'good', message: '¡Qué bueno! Aprovechemos esa energía positiva' },
@@ -285,7 +297,8 @@ const WelcomeScreen = ({ onStart }) => {
 
 // Enhanced dashboard with daily mood check
 const Dashboard = ({ onBack }) => {
-  const [userName] = useState(localStorage.getItem('visa-quest-user-name') || 'Viajera');
+  const { currentUser, logout } = useAuth();
+  const [userName] = useState(localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Viajera');
   const [todayMood] = useState(() => {
     const saved = localStorage.getItem('visa-quest-daily-mood');
     if (saved) {
@@ -297,12 +310,43 @@ const Dashboard = ({ onBack }) => {
     return null;
   });
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <OfflineIndicator />
       
       <div className="p-6">
         <div className="max-w-md mx-auto">
+          
+          {/* User profile header */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {currentUser?.photoURL ? (
+                <img src={currentUser.photoURL} alt={userName} className="w-10 h-10 rounded-full" />
+              ) : (
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-bold">
+                  {userName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-gray-600">Hola,</p>
+                <p className="font-semibold text-gray-800">{userName}</p>
+              </div>
+            </div>
+            <button 
+              onClick={handleLogout}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cerrar sesión
+            </button>
+          </div>
           
           {/* Warm daily greeting */}
           <div className="bg-white rounded-2xl p-6 shadow-lg text-center mb-6">
@@ -353,15 +397,44 @@ function App() {
     setCurrentScreen('welcome');
   };
 
+  const AppContent = () => {
+    const { currentUser } = useAuth();
+
+    return (
+      <Router>
+        <Routes>
+          <Route path="/login" element={
+            currentUser ? <Navigate to="/dashboard" /> : <LoginForm />
+          } />
+          
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard onBack={handleBack} />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/" element={
+            currentUser ? (
+              currentScreen === 'welcome' ? (
+                <WelcomeScreen onStart={handleStart} />
+              ) : (
+                <Navigate to="/dashboard" />
+              )
+            ) : (
+              <Navigate to="/login" />
+            )
+          } />
+        </Routes>
+      </Router>
+    );
+  };
+
   return (
-    <div className="App">
-      {currentScreen === 'welcome' && (
-        <WelcomeScreen onStart={handleStart} />
-      )}
-      {currentScreen === 'dashboard' && (
-        <Dashboard onBack={handleBack} />
-      )}
-    </div>
+    <AuthProvider>
+      <div className="App">
+        <AppContent />
+      </div>
+    </AuthProvider>
   );
 }
 
