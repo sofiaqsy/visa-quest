@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { moodService, progressService, analyticsService } from '../../firebase/services';
-import { CheckCircle, Circle, Calendar, Heart, TrendingUp, Award, ChevronUp, ChevronDown, Sparkles, BookOpen, Globe, Users, Star } from 'lucide-react';
+import { CheckCircle, Circle, Calendar, Heart, TrendingUp, Award, ChevronUp, ChevronDown, Sparkles, BookOpen, Globe, Users, Star, RefreshCw } from 'lucide-react';
 import './Dashboard.css';
 
 // Card types for different activities
@@ -491,6 +491,21 @@ const Dashboard = () => {
     }
   };
 
+  // Reset journey handler
+  const handleResetJourney = () => {
+    if (window.confirm('¿Estás segura que quieres reiniciar tu viaje? Esto borrará todo tu progreso local.')) {
+      // Clear all localStorage data
+      localStorage.removeItem('visa-quest-user-name');
+      localStorage.removeItem('visa-quest-has-seen-welcome');
+      localStorage.removeItem('visa-quest-daily-mood');
+      localStorage.removeItem('visa-quest-completed-tasks');
+      localStorage.removeItem('visa-quest-start-date');
+      
+      // Reload the page to start fresh
+      window.location.href = '/';
+    }
+  };
+
   // Render card based on type
   const renderCard = (card) => {
     switch (card.type) {
@@ -522,6 +537,16 @@ const Dashboard = () => {
       onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
     >
+      {/* Reset Button - Positioned at top left */}
+      <button 
+        className="reset-button"
+        onClick={handleResetJourney}
+        title="Reiniciar viaje"
+      >
+        <RefreshCw size={20} />
+        <span>Reiniciar</span>
+      </button>
+      
       {/* Card Stack */}
       <div className="cards-wrapper">
         {cards.map((card, index) => (
