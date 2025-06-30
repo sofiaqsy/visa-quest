@@ -333,7 +333,6 @@ const Dashboard = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   
   const containerRef = useRef(null);
-  const animationRef = useRef(null);
   const velocityRef = useRef(0);
   const lastTouchRef = useRef(0);
 
@@ -500,7 +499,6 @@ const Dashboard = () => {
     
     const distance = touchStart - touchEnd;
     const velocity = velocityRef.current;
-    const timeDiff = Date.now() - touchStartTime;
     
     // Determine swipe threshold based on distance and velocity
     const minSwipeDistance = 30;
