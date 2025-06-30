@@ -5,10 +5,11 @@ import LoginForm from './components/Auth/LoginForm';
 import { registerSW, requestNotificationPermission } from './hooks/usePWA';
 import PWAInstallButton, { OfflineIndicator, InstallPrompt } from './components/PWAInstallButton';
 
-// Protected Route component
+// Protected Route component - Modified to allow guest access
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useAuth();
-  return currentUser ? children : <Navigate to="/login" />;
+  // Allow both authenticated users and guest users
+  return children;
 };
 
 // Gentle welcome screen component
@@ -18,7 +19,7 @@ const WelcomeScreen = ({ onStart }) => {
   const [userName, setUserName] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const { currentUser } = useAuth();
+  const { currentUser, continueAsGuest } = useAuth();
 
   useEffect(() => {
     setIsLoaded(true);
@@ -69,7 +70,11 @@ const WelcomeScreen = ({ onStart }) => {
     }, 1500);
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
+    // If no user is logged in, continue as guest
+    if (!currentUser) {
+      await continueAsGuest();
+    }
     onStart();
   };
 
@@ -126,6 +131,9 @@ const WelcomeScreen = ({ onStart }) => {
               <p>🗓️ Te acompañaré durante 21 días</p>
               <p>📱 Funciona sin internet</p>
               <p>🤗 Siempre a tu ritmo</p>
+              <p className="mt-4 text-xs">
+                💡 Puedes crear una cuenta más tarde para guardar tu progreso
+              </p>
             </div>
           </div>
         </div>
@@ -243,45 +251,31 @@ const WelcomeScreen = ({ onStart }) => {
               </div>
             </div>
 
-            {/* Supportive features */}
-            <div className="bg-white rounded-2xl p-6 shadow-lg mb-6 slide-up" style={{ animationDelay: '0.6s' }}>
-              <h4 className="font-semibold text-gray-800 mb-3 text-center">Estarás acompañada con:</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                  <div className="text-xl mb-1">💝</div>
-                  <div className="font-medium">Check-ins diarios</div>
-                </div>
-                <div className="text-center p-3 bg-green-50 rounded-lg">
-                  <div className="text-xl mb-1">👥</div>
-                  <div className="font-medium">Comunidad de apoyo</div>
-                </div>
-                <div className="text-center p-3 bg-blue-50 rounded-lg">
-                  <div className="text-xl mb-1">🎯</div>
-                  <div className="font-medium">Metas pequeñas</div>
-                </div>
-                <div className="text-center p-3 bg-purple-50 rounded-lg">
-                  <div className="text-xl mb-1">🔔</div>
-                  <div className="font-medium">Recordatorios suaves</div>
-                </div>
-              </div>
-            </div>
-
             {/* Call to action */}
             <button
               onClick={handleStart}
               className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-green-600 hover:to-blue-600 transform hover:scale-105 transition-all duration-300 pulse-glow slide-up"
-              style={{ animationDelay: '0.9s' }}
+              style={{ animationDelay: '0.6s' }}
             >
               ¡Empecemos juntas! 🌟
             </button>
 
+            {/* Account options */}
+            <div className="mt-6 text-center slide-up" style={{ animationDelay: '0.9s' }}>
+              <p className="text-sm text-gray-600 mb-2">
+                ¿Quieres guardar tu progreso?
+              </p>
+              <a 
+                href="/login" 
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                Crear cuenta o iniciar sesión
+              </a>
+            </div>
+
             {/* PWA Install Button */}
             <div className="mt-4 flex justify-center">
               <PWAInstallButton className="text-sm" />
-            </div>
-
-            <div className="text-center text-xs text-gray-500 mt-4">
-              <p>💚 Recuerda: vas a tu ritmo, sin presión</p>
             </div>
           </div>
         </div>
@@ -297,7 +291,7 @@ const WelcomeScreen = ({ onStart }) => {
 
 // Enhanced dashboard with daily mood check
 const Dashboard = ({ onBack }) => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, isGuest } = useAuth();
   const [userName] = useState(localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Viajera');
   const [todayMood] = useState(() => {
     const saved = localStorage.getItem('visa-quest-daily-mood');
@@ -336,17 +330,42 @@ const Dashboard = ({ onBack }) => {
                 </div>
               )}
               <div>
-                <p className="text-sm text-gray-600">Hola,</p>
+                <p className="text-sm text-gray-600">
+                  {isGuest ? 'Modo invitado' : 'Hola,'}
+                </p>
                 <p className="font-semibold text-gray-800">{userName}</p>
               </div>
             </div>
-            <button 
-              onClick={handleLogout}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Cerrar sesión
-            </button>
+            <div className="text-right">
+              {isGuest ? (
+                <a 
+                  href="/login" 
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  Crear cuenta
+                </a>
+              ) : (
+                <button 
+                  onClick={handleLogout}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Cerrar sesión
+                </button>
+              )}
+            </div>
           </div>
+          
+          {/* Guest mode notice */}
+          {isGuest && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>Modo invitado:</strong> Tu progreso se guardará localmente. 
+                <a href="/login" className="text-yellow-900 underline ml-1">
+                  Crea una cuenta
+                </a> para sincronizar tu progreso en todos tus dispositivos.
+              </p>
+            </div>
+          )}
           
           {/* Warm daily greeting */}
           <div className="bg-white rounded-2xl p-6 shadow-lg text-center mb-6">
@@ -403,9 +422,7 @@ function App() {
     return (
       <Router>
         <Routes>
-          <Route path="/login" element={
-            currentUser ? <Navigate to="/dashboard" /> : <LoginForm />
-          } />
+          <Route path="/login" element={<LoginForm />} />
           
           <Route path="/dashboard" element={
             <ProtectedRoute>
@@ -414,14 +431,10 @@ function App() {
           } />
           
           <Route path="/" element={
-            currentUser ? (
-              currentScreen === 'welcome' ? (
-                <WelcomeScreen onStart={handleStart} />
-              ) : (
-                <Navigate to="/dashboard" />
-              )
+            currentScreen === 'welcome' ? (
+              <WelcomeScreen onStart={handleStart} />
             ) : (
-              <Navigate to="/login" />
+              <Navigate to="/dashboard" />
             )
           } />
         </Routes>
