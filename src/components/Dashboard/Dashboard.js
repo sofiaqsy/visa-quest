@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { moodService, progressService, analyticsService } from '../../firebase/services';
+import { progressService, analyticsService } from '../../firebase/services';
 import { CheckCircle, Circle, ChevronUp, ChevronDown, Sparkles, BookOpen, RefreshCw, User, Home, Trophy } from 'lucide-react';
 import './Dashboard.css';
 
@@ -298,7 +298,7 @@ const TabBar = ({ activeTab, onTabChange }) => (
 
 // Main Dashboard Component
 const Dashboard = () => {
-  const { currentUser, isGuest } = useAuth();
+  const { currentUser } = useAuth();
   const [userName] = useState(localStorage.getItem('visa-quest-user-name') || 'Viajera');
   const [todayMood, setTodayMood] = useState(null);
   const [completedTasks, setCompletedTasks] = useState([]);
