@@ -4,16 +4,15 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
-// Firebase configuration
-// IMPORTANTE: Estas son variables públicas, es seguro incluirlas en el código
+// Firebase configuration - VisaQuest App
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
+  apiKey: "AIzaSyDy8bg1yC1FhBX6AF34CHOgk_noqMZpPjU",
   authDomain: "visa-quest-app.firebaseapp.com",
-  projectId: "visa-quest-app", 
-  storageBucket: "visa-quest-app.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef123456789",
-  measurementId: "G-XXXXXXXXXX"
+  projectId: "visa-quest-app",
+  storageBucket: "visa-quest-app.firebasestorage.app",
+  messagingSenderId: "294633942380",
+  appId: "1:294633942380:web:198bdec3c5b18ccb789749",
+  measurementId: "G-7PG9EBXT83"
 };
 
 // Initialize Firebase
@@ -51,8 +50,9 @@ export const requestNotificationToken = async () => {
   if (!messaging) return null;
   
   try {
+    // You'll need to add VAPID key from Firebase Console → Cloud Messaging
     const token = await getToken(messaging, {
-      vapidKey: 'YOUR_VAPID_KEY_HERE' // You'll get this from Firebase Console
+      vapidKey: 'YOUR_VAPID_KEY_HERE' // We'll configure this in the next step
     });
     console.log('VisaQuest: FCM token:', token);
     return token;
