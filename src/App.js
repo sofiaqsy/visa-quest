@@ -7,7 +7,6 @@ import PWAInstallButton, { OfflineIndicator, InstallPrompt } from './components/
 
 // Protected Route component - Modified to allow guest access
 const ProtectedRoute = ({ children }) => {
-  const { currentUser } = useAuth();
   // Allow both authenticated users and guest users
   return children;
 };
@@ -417,8 +416,6 @@ function App() {
   };
 
   const AppContent = () => {
-    const { currentUser } = useAuth();
-
     return (
       <Router>
         <Routes>
