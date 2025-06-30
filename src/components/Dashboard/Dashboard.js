@@ -231,6 +231,42 @@ const getTasksForGoal = (goalId, category) => {
   }
 };
 
+// Helper function to parse gradient colors safely
+const parseGradientColors = (gradient) => {
+  if (!gradient) return { from: '#667eea', to: '#764ba2' }; // Default colors
+  
+  const parts = gradient.split(' ');
+  const fromColor = parts[0]?.replace('from-', '') || 'blue-400';
+  const toColor = parts[2]?.replace('to-', '') || 'blue-600';
+  
+  // Convert Tailwind colors to hex (simplified mapping)
+  const colorMap = {
+    'blue-400': '#60a5fa',
+    'blue-600': '#2563eb',
+    'purple-400': '#a78bfa',
+    'purple-600': '#9333ea',
+    'green-400': '#4ade80',
+    'green-600': '#16a34a',
+    'pink-400': '#f472b6',
+    'pink-600': '#db2777',
+    'yellow-400': '#facc15',
+    'yellow-600': '#ca8a04',
+    'indigo-400': '#818cf8',
+    'indigo-600': '#4f46e5',
+    'cyan-400': '#22d3ee',
+    'cyan-600': '#0891b2',
+    'orange-400': '#fb923c',
+    'orange-600': '#ea580c',
+    'red-400': '#f87171',
+    'red-600': '#dc2626'
+  };
+  
+  return {
+    from: colorMap[fromColor] || '#667eea',
+    to: colorMap[toColor] || '#764ba2'
+  };
+};
+
 // Header Component - Now shows contextual greeting
 const DashboardHeader = ({ motivationalQuote }) => (
   <div className="dashboard-header-minimal">
@@ -369,7 +405,7 @@ const GoalManager = ({ activeGoals, onGoalsUpdate, completedTasks }) => {
         
         <div className="goals-grid">
           {activeGoals.map(goal => {
-            const config = CATEGORY_CONFIG[goal.category];
+            const config = CATEGORY_CONFIG[goal.category] || { icon: '🎯', gradient: 'from-gray-400 to-gray-600' };
             const goalTasks = goal.tasks || [];
             const completedGoalTasks = goalTasks.filter(task => 
               completedTasks.includes(task.id)
@@ -377,6 +413,8 @@ const GoalManager = ({ activeGoals, onGoalsUpdate, completedTasks }) => {
             const progress = goalTasks.length > 0 
               ? Math.round((completedGoalTasks.length / goalTasks.length) * 100)
               : 0;
+            
+            const colors = parseGradientColors(config.gradient);
             
             return (
               <div key={goal.id} className={`goal-card ${!goal.active ? 'inactive' : ''}`}>
@@ -409,7 +447,7 @@ const GoalManager = ({ activeGoals, onGoalsUpdate, completedTasks }) => {
                       className="goal-progress-fill"
                       style={{ 
                         width: `${progress}%`,
-                        background: `linear-gradient(to right, ${config.gradient.split(' ')[0].replace('from-', '#')}, ${config.gradient.split(' ')[2].replace('to-', '#')})`
+                        background: `linear-gradient(to right, ${colors.from}, ${colors.to})`
                       }}
                     />
                   </div>
@@ -655,7 +693,9 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
         <div className="category-progress">
           <h3 className="section-title" style={{ color: 'white' }}>Progreso por Categoría</h3>
           {Object.entries(progressByCategory).map(([category, data]) => {
-            const config = CATEGORY_CONFIG[category];
+            const config = CATEGORY_CONFIG[category] || { icon: '🎯', gradient: 'from-gray-400 to-gray-600' };
+            const colors = parseGradientColors(config.gradient);
+            
             return (
               <div key={category} className="category-progress-item">
                 <div className="category-info">
@@ -667,7 +707,7 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
                     className="category-progress-fill"
                     style={{ 
                       width: `${data.percentage}%`,
-                      background: `linear-gradient(to right, ${config.gradient.split(' ')[0].replace('from-', '#')}, ${config.gradient.split(' ')[2].replace('to-', '#')})`
+                      background: `linear-gradient(to right, ${colors.from}, ${colors.to})`
                     }}
                   />
                 </div>
