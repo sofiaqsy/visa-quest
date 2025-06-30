@@ -11,7 +11,9 @@ import {
   limit,
   serverTimestamp,
   onSnapshot,
-  setDoc
+  setDoc,
+  increment,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -350,13 +352,13 @@ export const progressService = {
   async linkAnonymousDataToUser(userId) {
     try {
       const deviceId = getDeviceId();
+      const batch = writeBatch(db);
       
       // Update moods
       const moodsRef = collection(db, 'moods');
       const moodsQuery = query(moodsRef, where('identifier', '==', deviceId));
       const moodsSnapshot = await getDocs(moodsQuery);
       
-      const batch = writeBatch(db);
       moodsSnapshot.forEach((doc) => {
         batch.update(doc.ref, {
           userId: userId,
@@ -389,12 +391,8 @@ export const progressService = {
   }
 };
 
-// Import necessary Firestore functions
-import { increment, writeBatch } from 'firebase/firestore';
-
-// Community features (unchanged)
+// Community features
 export const communityService = {
-  // ... existing community service code ...
   // Add success story
   async addSuccessStory(userId, storyData) {
     try {
@@ -433,7 +431,7 @@ export const communityService = {
       return stories;
     } catch (error) {
       console.error('VisaQuest: Error getting success stories:', error);
-      return [];;
+      return [];
     }
   },
 
@@ -457,7 +455,7 @@ export const communityService = {
   }
 };
 
-// Real-time listeners (unchanged)
+// Real-time listeners
 export const realtimeService = {
   // Listen to user progress changes
   subscribeToProgress(userId, callback) {
