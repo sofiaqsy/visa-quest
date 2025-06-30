@@ -1137,10 +1137,42 @@ const Dashboard = () => {
     }
   };
 
-  // Handle tab change
+  // Handle tab change - FIXED to reset card state
   const handleTabChange = (tab) => {
     console.log('Changing tab to:', tab);
     setActiveTab(tab);
+    
+    // Reset card navigation state when returning to home
+    if (tab === 'home') {
+      setCurrentCardIndex(0);
+      setDragOffset(0);
+      setIsTransitioning(false);
+      
+      // Force re-render of cards with proper positioning
+      setTimeout(() => {
+        if (containerRef.current) {
+          const cardElements = containerRef.current.querySelectorAll('.card-container');
+          cardElements.forEach((card, index) => {
+            card.style.transition = 'none';
+            if (index === 0) {
+              card.style.transform = 'translateY(0) scale(1)';
+              card.style.opacity = '1';
+            } else {
+              card.style.transform = 'translateY(100%) scale(0.95)';
+              card.style.opacity = '0';
+            }
+          });
+          
+          // Re-enable transitions after positioning
+          setTimeout(() => {
+            cardElements.forEach(card => {
+              card.style.transition = '';
+            });
+          }, 50);
+        }
+      }, 0);
+    }
+    
     // Track tab change
     if (analyticsService && analyticsService.trackAction) {
       analyticsService.trackAction(currentUser?.uid, 'tab_changed', { tab });
@@ -1250,9 +1282,10 @@ const Dashboard = () => {
                     className={`card-container ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''} ${isNext ? 'next' : ''} ${isPrev ? 'prev' : ''}`}
                     style={{
                       transform: `translateY(${getCardTransform(index)}%)`,
-                      opacity: isVisible ? 1 : 0,
+                      opacity: isVisible ? (isActive ? 1 : (isNext || isPrev ? 0.8 : 0)) : 0,
                       pointerEvents: isActive ? 'auto' : 'none',
-                      transition: isDragging ? 'none' : undefined
+                      transition: isDragging ? 'none' : undefined,
+                      zIndex: isActive ? 10 : (isNext ? 5 : 1)
                     }}
                   >
                     <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
