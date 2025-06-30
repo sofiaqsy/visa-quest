@@ -23,53 +23,67 @@ const WelcomeScreen = ({ onStart }) => {
   const { currentUser, continueAsGuest } = useAuth();
 
   useEffect(() => {
-    setIsLoaded(true);
-    
-    // Track visit
-    analyticsService.trackAction(currentUser?.uid, 'welcome_screen_view');
-    
-    // Check if user already has a name saved
-    const savedName = localStorage.getItem('visa-quest-user-name');
-    const hasSeenWelcome = localStorage.getItem('visa-quest-has-seen-welcome');
-    
-    if (savedName) {
-      setUserName(savedName);
+    const initializeWelcome = async () => {
+      setIsLoaded(true);
       
-      // Check if we already have today's mood
-      const savedMood = localStorage.getItem('visa-quest-daily-mood');
-      if (savedMood) {
-        const parsed = JSON.parse(savedMood);
-        const today = new Date().toDateString();
+      try {
+        // Track visit
+        await analyticsService.trackAction(currentUser?.uid, 'welcome_screen_view');
         
-        if (parsed.date === today) {
-          // Already have today's mood, skip to ready or dashboard
-          if (hasSeenWelcome) {
-            // Go directly to dashboard
-            handleStart();
-          } else {
-            // Show ready screen once
-            setSelectedMood(parsed);
-            setCurrentStep('ready');
+        // Check if user already has a name saved
+        const savedName = localStorage.getItem('visa-quest-user-name');
+        const hasSeenWelcome = localStorage.getItem('visa-quest-has-seen-welcome');
+        
+        if (savedName) {
+          setUserName(savedName);
+          
+          // Check if we already have today's mood
+          const savedMood = localStorage.getItem('visa-quest-daily-mood');
+          if (savedMood) {
+            const parsed = JSON.parse(savedMood);
+            const today = new Date().toDateString();
+            
+            if (parsed.date === today) {
+              // Already have today's mood, skip to ready or dashboard
+              if (hasSeenWelcome) {
+                // Go directly to dashboard
+                await handleStart();
+                return;
+              } else {
+                // Show ready screen once
+                setSelectedMood(parsed);
+                setCurrentStep('ready');
+                return;
+              }
+            }
           }
-          return;
+          
+          // Have name but need today's mood
+          setCurrentStep('mood');
+        } else if (currentUser?.displayName) {
+          // Use display name from auth
+          setUserName(currentUser.displayName);
+          localStorage.setItem('visa-quest-user-name', currentUser.displayName);
+          setCurrentStep('mood');
+        } else {
+          // First time user
+          setCurrentStep('greeting');
         }
+        
+        // Update device activity
+        await userService.updateDeviceActivity();
+      } catch (error) {
+        console.error('Error initializing welcome:', error);
+        // On error, show greeting
+        setCurrentStep('greeting');
       }
-      
-      // Have name but need today's mood
-      setCurrentStep('mood');
-    } else if (currentUser?.displayName) {
-      // Use display name from auth
-      setUserName(currentUser.displayName);
-      localStorage.setItem('visa-quest-user-name', currentUser.displayName);
-      setCurrentStep('mood');
-    } else {
-      // First time user
-      setCurrentStep('greeting');
-    }
-    
-    // Update device activity
-    userService.updateDeviceActivity();
-    
+    };
+
+    // Small delay to ensure everything is loaded
+    const timer = setTimeout(() => {
+      initializeWelcome();
+    }, 100);
+
     // Request notification permission gently
     setTimeout(() => {
       requestNotificationPermission();
@@ -79,6 +93,8 @@ const WelcomeScreen = ({ onStart }) => {
     setTimeout(() => {
       setShowInstallPrompt(true);
     }, 10000);
+
+    return () => clearTimeout(timer);
   }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const moods = [
