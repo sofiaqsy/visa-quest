@@ -308,7 +308,6 @@ const TabBar = ({ activeTab, onTabChange }) => (
 // Main Dashboard Component
 const Dashboard = () => {
   const { currentUser } = useAuth();
-  const [userName] = useState(localStorage.getItem('visa-quest-user-name') || 'Viajera');
   const [todayMood, setTodayMood] = useState(null);
   const [completedTasks, setCompletedTasks] = useState([]);
   const [dayNumber, setDayNumber] = useState(1);
