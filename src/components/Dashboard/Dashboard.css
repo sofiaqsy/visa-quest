@@ -267,6 +267,31 @@
   100% { transform: scale(1); }
 }
 
+/* Task Category Tag */
+.task-category-tag {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 2;
+}
+
+.task-category-tag.visa { color: #2563eb; background: rgba(37, 99, 235, 0.1); }
+.task-category-tag.work { color: #7c3aed; background: rgba(124, 58, 237, 0.1); }
+.task-category-tag.personal { color: #ec4899; background: rgba(236, 72, 153, 0.1); }
+.task-category-tag.health { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+.task-category-tag.learning { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+.task-category-tag.finance { color: #6366f1; background: rgba(99, 102, 241, 0.1); }
+
 .task-header {
   display: flex;
   justify-content: space-between;
@@ -559,6 +584,59 @@
   margin-top: 4px;
 }
 
+/* Category Progress */
+.category-progress {
+  margin-bottom: 40px;
+}
+
+.category-progress-item {
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.category-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.category-icon {
+  font-size: 20px;
+}
+
+.category-name {
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.category-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.category-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.category-stats {
+  font-size: 12px;
+  opacity: 0.8;
+  min-width: 40px;
+  text-align: right;
+}
+
 /* Weekly Progress */
 .weekly-progress {
   margin-bottom: 40px;
@@ -824,6 +902,22 @@
 .to-orange-600 { --tw-gradient-to: #ea580c; }
 .from-red-400 { --tw-gradient-from: #f87171; }
 .to-red-600 { --tw-gradient-to: #dc2626; }
+
+/* New color gradients for categories */
+.from-blue-500 { --tw-gradient-from: #3b82f6; }
+.to-blue-700 { --tw-gradient-to: #1d4ed8; }
+.from-purple-500 { --tw-gradient-from: #a855f7; }
+.to-purple-700 { --tw-gradient-to: #6b21a8; }
+.from-green-500 { --tw-gradient-from: #22c55e; }
+.to-green-700 { --tw-gradient-to: #15803d; }
+.from-cyan-500 { --tw-gradient-from: #06b6d4; }
+.to-cyan-700 { --tw-gradient-to: #0e7490; }
+.from-yellow-500 { --tw-gradient-from: #eab308; }
+.to-yellow-700 { --tw-gradient-to: #a16207; }
+.from-indigo-500 { --tw-gradient-from: #6366f1; }
+.to-indigo-700 { --tw-gradient-to: #4338ca; }
+.from-red-500 { --tw-gradient-from: #ef4444; }
+.to-red-700 { --tw-gradient-to: #b91c1c; }
 
 /* Background gradient animation */
 .bg-gradient-to-br {
