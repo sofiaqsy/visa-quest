@@ -1,13 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { progressService, analyticsService } from '../../firebase/services';
-import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy } from 'lucide-react';
+import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy, Calendar, Target, Award, TrendingUp } from 'lucide-react';
 import './Dashboard.css';
 
 // Card types for different activities
 const CARD_TYPES = {
   TASK: 'task',
   TIP: 'tip'
+};
+
+// Get all tasks for progress calculation
+const getAllTasks = () => {
+  const allTasks = [];
+  for (let day = 1; day <= 21; day++) {
+    const dayTasks = getTasksByDay(day);
+    allTasks.push(...dayTasks);
+  }
+  return allTasks;
 };
 
 // Daily tasks data organized by day
@@ -111,10 +121,13 @@ const getTasksByDay = (dayNumber) => {
     ]
   };
   
-  // Always return tasks for the calculated day, cycling through if needed
-  const availableDays = Object.keys(tasksByDay).length;
-  const cycledDay = ((dayNumber - 1) % availableDays) + 1;
-  return tasksByDay[cycledDay] || tasksByDay[1];
+  // Extend pattern for remaining days
+  if (dayNumber > 3) {
+    const cycledDay = ((dayNumber - 1) % 3) + 1;
+    return tasksByDay[cycledDay] || tasksByDay[1];
+  }
+  
+  return tasksByDay[dayNumber] || tasksByDay[1];
 };
 
 // Daily tips
@@ -281,6 +294,194 @@ const TipCard = ({ card }) => (
   </div>
 );
 
+// Progress View Component
+const ProgressView = ({ completedTasks, dayNumber, userName }) => {
+  const allTasks = getAllTasks();
+  const totalTasks = allTasks.length;
+  const completedCount = completedTasks.length;
+  const progressPercentage = Math.round((completedCount / totalTasks) * 100);
+  
+  // Calculate streaks
+  const calculateStreak = () => {
+    let streak = 0;
+    let currentDate = new Date();
+    
+    for (let i = 0; i < dayNumber; i++) {
+      const dayTasks = getTasksByDay(dayNumber - i);
+      const dayTaskIds = dayTasks.map(t => t.id);
+      const completedToday = dayTaskIds.some(id => completedTasks.includes(id));
+      
+      if (completedToday) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  };
+  
+  const currentStreak = calculateStreak();
+  
+  // Milestones
+  const milestones = [
+    { name: "Iniciaste tu viaje", icon: "🚀", completed: true },
+    { name: "Primera semana", icon: "📅", completed: dayNumber >= 7 },
+    { name: "Mitad del camino", icon: "🌟", completed: dayNumber >= 11 },
+    { name: "Última semana", icon: "🏁", completed: dayNumber >= 15 },
+    { name: "¡Meta alcanzada!", icon: "🏆", completed: dayNumber >= 21 }
+  ];
+  
+  // Week progress
+  const currentWeek = Math.ceil(dayNumber / 7);
+  const weekProgress = [
+    { week: 1, name: "Organización", completed: completedTasks.filter(id => id.startsWith('task_1_')).length, total: 9 },
+    { week: 2, name: "Planificación", completed: completedTasks.filter(id => id.startsWith('task_2_')).length, total: 9 },
+    { week: 3, name: "Aplicación", completed: completedTasks.filter(id => id.startsWith('task_3_')).length, total: 9 }
+  ];
+  
+  return (
+    <div className="progress-view">
+      {/* Header */}
+      <div className="progress-header">
+        <h1 className="progress-title">Tu Progreso</h1>
+        <p className="progress-subtitle">¡Hola {userName}! Este es tu camino hacia Canadá 🇨🇦</p>
+      </div>
+      
+      {/* Main Progress Circle */}
+      <div className="progress-circle-container">
+        <div className="progress-circle">
+          <svg className="progress-ring" width="200" height="200">
+            <circle
+              className="progress-ring-background"
+              stroke="#e5e7eb"
+              strokeWidth="12"
+              fill="transparent"
+              r="88"
+              cx="100"
+              cy="100"
+            />
+            <circle
+              className="progress-ring-fill"
+              stroke="url(#gradient)"
+              strokeWidth="12"
+              fill="transparent"
+              r="88"
+              cx="100"
+              cy="100"
+              strokeDasharray={`${2 * Math.PI * 88}`}
+              strokeDashoffset={`${2 * Math.PI * 88 * (1 - progressPercentage / 100)}`}
+              strokeLinecap="round"
+              transform="rotate(-90 100 100)"
+            />
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#667eea" />
+                <stop offset="100%" stopColor="#764ba2" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div className="progress-circle-content">
+            <span className="progress-percentage">{progressPercentage}%</span>
+            <span className="progress-label">Completado</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Stats Grid */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon">
+            <Calendar size={24} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">Día {dayNumber}</span>
+            <span className="stat-label">de 21</span>
+          </div>
+        </div>
+        
+        <div className="stat-card">
+          <div className="stat-icon">
+            <Target size={24} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{completedCount}</span>
+            <span className="stat-label">Tareas completadas</span>
+          </div>
+        </div>
+        
+        <div className="stat-card">
+          <div className="stat-icon">
+            <TrendingUp size={24} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{currentStreak}</span>
+            <span className="stat-label">Días de racha</span>
+          </div>
+        </div>
+        
+        <div className="stat-card">
+          <div className="stat-icon">
+            <Award size={24} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">Semana {currentWeek}</span>
+            <span className="stat-label">Actual</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Weekly Progress */}
+      <div className="weekly-progress">
+        <h3 className="section-title">Progreso por Semana</h3>
+        {weekProgress.map((week) => (
+          <div key={week.week} className="week-progress-item">
+            <div className="week-info">
+              <span className="week-number">Semana {week.week}</span>
+              <span className="week-name">{week.name}</span>
+            </div>
+            <div className="week-progress-bar">
+              <div 
+                className="week-progress-fill"
+                style={{ width: `${(week.completed / week.total) * 100}%` }}
+              />
+            </div>
+            <span className="week-stats">{week.completed}/{week.total}</span>
+          </div>
+        ))}
+      </div>
+      
+      {/* Milestones */}
+      <div className="milestones-section">
+        <h3 className="section-title">Logros Desbloqueados</h3>
+        <div className="milestones-grid">
+          {milestones.map((milestone, index) => (
+            <div 
+              key={index} 
+              className={`milestone-item ${milestone.completed ? 'completed' : 'locked'}`}
+            >
+              <span className="milestone-icon">{milestone.icon}</span>
+              <span className="milestone-name">{milestone.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Motivational Message */}
+      <div className="motivation-card">
+        <Sparkles size={24} />
+        <p className="motivation-message">
+          {progressPercentage < 25 && "¡Excelente inicio! Cada paso cuenta en tu camino a Canadá 🌟"}
+          {progressPercentage >= 25 && progressPercentage < 50 && "¡Vas por buen camino! Tu dedicación está dando frutos 💪"}
+          {progressPercentage >= 50 && progressPercentage < 75 && "¡Ya vas por la mitad! Tu visa está más cerca que nunca 🎯"}
+          {progressPercentage >= 75 && progressPercentage < 100 && "¡Casi lo logras! La meta está a la vista 🏁"}
+          {progressPercentage === 100 && "¡Felicidades! Has completado tu preparación para la visa 🎉"}
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // Navigation Tab Bar
 const TabBar = ({ activeTab, onTabChange }) => (
   <div className="tab-bar">
@@ -318,6 +519,7 @@ const Dashboard = () => {
   const [cards, setCards] = useState([]);
   const [motivationalQuote, setMotivationalQuote] = useState('');
   const [activeTab, setActiveTab] = useState('home');
+  const [userName, setUserName] = useState('');
   
   // Enhanced touch handling with velocity tracking
   const [touchStart, setTouchStart] = useState(0);
@@ -331,6 +533,10 @@ const Dashboard = () => {
   const lastTouchRef = useRef(0);
 
   const initializeDashboard = useCallback(async () => {
+    // Get user name
+    const savedName = localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Amiga';
+    setUserName(savedName);
+    
     // Get today's mood
     const savedMood = localStorage.getItem('visa-quest-daily-mood');
     let moodValue = 'default';
@@ -411,7 +617,7 @@ const Dashboard = () => {
     }
 
     // Calculate progress for tracking
-    const totalTasks = 21 * 3;
+    const totalTasks = getAllTasks().length;
     const progress = Math.round((newCompleted.length / totalTasks) * 100);
 
     // Track action
@@ -458,6 +664,8 @@ const Dashboard = () => {
 
   // Enhanced touch handlers with velocity tracking
   const handleTouchStart = (e) => {
+    if (activeTab !== 'home') return;
+    
     setTouchStart(e.touches[0].clientY);
     setIsDragging(true);
     lastTouchRef.current = e.touches[0].clientY;
@@ -465,7 +673,7 @@ const Dashboard = () => {
   };
 
   const handleTouchMove = (e) => {
-    if (!isDragging) return;
+    if (!isDragging || activeTab !== 'home') return;
     
     const currentTouch = e.touches[0].clientY;
     setTouchEnd(currentTouch);
@@ -485,7 +693,7 @@ const Dashboard = () => {
   };
 
   const handleTouchEnd = () => {
-    if (!touchStart || !isDragging) return;
+    if (!touchStart || !isDragging || activeTab !== 'home') return;
     
     setIsDragging(false);
     
@@ -516,7 +724,7 @@ const Dashboard = () => {
 
   // Mouse wheel handler with momentum
   const handleWheel = (e) => {
-    if (cards.length === 0 || isTransitioning) return;
+    if (cards.length === 0 || isTransitioning || activeTab !== 'home') return;
     
     e.preventDefault();
     
@@ -559,7 +767,8 @@ const Dashboard = () => {
   // Handle tab change
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    // TODO: Implement profile and progress views
+    // Track tab change
+    analyticsService.trackAction(currentUser?.uid, 'tab_changed', { tab });
   };
 
   // Calculate card transform with drag offset
@@ -585,46 +794,88 @@ const Dashboard = () => {
       
       {/* Main Content Area */}
       <div 
-        className="dashboard-content"
+        className={`dashboard-content ${activeTab !== 'home' ? 'tab-active' : ''}`}
         ref={containerRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onWheel={handleWheel}
       >
-        {/* Reset Button */}
-        <button 
-          className="reset-button-minimal"
-          onClick={handleResetJourney}
-          title="Reiniciar viaje"
-        >
-          <RefreshCw size={16} />
-        </button>
+        {/* Reset Button - Only show on home tab */}
+        {activeTab === 'home' && (
+          <button 
+            className="reset-button-minimal"
+            onClick={handleResetJourney}
+            title="Reiniciar viaje"
+          >
+            <RefreshCw size={16} />
+          </button>
+        )}
         
-        {/* Card Stack */}
-        <div className="cards-wrapper">
-          {cards.length > 0 ? (
-            cards.map((card, index) => {
-              const isActive = index === currentCardIndex;
-              const isPassed = index < currentCardIndex;
-              const isNext = index === currentCardIndex + 1;
-              const isPrev = index === currentCardIndex - 1;
-              const isVisible = Math.abs(index - currentCardIndex) <= 2;
-              
-              // Special handling for wrapping
-              const isLastCard = currentCardIndex === cards.length - 1;
-              const isFirstCard = currentCardIndex === 0;
-              
-              // Show first card as next when on last card
-              if (isLastCard && index === 0) {
+        {/* Content based on active tab */}
+        {activeTab === 'home' ? (
+          /* Card Stack */
+          <div className="cards-wrapper">
+            {cards.length > 0 ? (
+              cards.map((card, index) => {
+                const isActive = index === currentCardIndex;
+                const isPassed = index < currentCardIndex;
+                const isNext = index === currentCardIndex + 1;
+                const isPrev = index === currentCardIndex - 1;
+                const isVisible = Math.abs(index - currentCardIndex) <= 2;
+                
+                // Special handling for wrapping
+                const isLastCard = currentCardIndex === cards.length - 1;
+                const isFirstCard = currentCardIndex === 0;
+                
+                // Show first card as next when on last card
+                if (isLastCard && index === 0) {
+                  return (
+                    <div
+                      key={`${card.id}-${index}`}
+                      className="card-container next"
+                      style={{
+                        transform: `translateY(100%)`,
+                        opacity: 0.8,
+                        pointerEvents: 'none',
+                        transition: isDragging ? 'none' : undefined
+                      }}
+                    >
+                      <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
+                        {renderCard(card)}
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Show last card as prev when on first card
+                if (isFirstCard && index === cards.length - 1) {
+                  return (
+                    <div
+                      key={`${card.id}-${index}`}
+                      className="card-container prev"
+                      style={{
+                        transform: `translateY(-100%)`,
+                        opacity: 0.8,
+                        pointerEvents: 'none',
+                        transition: isDragging ? 'none' : undefined
+                      }}
+                    >
+                      <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
+                        {renderCard(card)}
+                      </div>
+                    </div>
+                  );
+                }
+                
                 return (
                   <div
                     key={`${card.id}-${index}`}
-                    className="card-container next"
+                    className={`card-container ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''} ${isNext ? 'next' : ''} ${isPrev ? 'prev' : ''}`}
                     style={{
-                      transform: `translateY(100%)`,
-                      opacity: 0.8,
-                      pointerEvents: 'none',
+                      transform: `translateY(${getCardTransform(index)}%)`,
+                      opacity: isVisible ? 1 : 0,
+                      pointerEvents: isActive ? 'auto' : 'none',
                       transition: isDragging ? 'none' : undefined
                     }}
                   >
@@ -633,53 +884,28 @@ const Dashboard = () => {
                     </div>
                   </div>
                 );
-              }
-              
-              // Show last card as prev when on first card
-              if (isFirstCard && index === cards.length - 1) {
-                return (
-                  <div
-                    key={`${card.id}-${index}`}
-                    className="card-container prev"
-                    style={{
-                      transform: `translateY(-100%)`,
-                      opacity: 0.8,
-                      pointerEvents: 'none',
-                      transition: isDragging ? 'none' : undefined
-                    }}
-                  >
-                    <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-                      {renderCard(card)}
-                    </div>
-                  </div>
-                );
-              }
-              
-              return (
-                <div
-                  key={`${card.id}-${index}`}
-                  className={`card-container ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''} ${isNext ? 'next' : ''} ${isPrev ? 'prev' : ''}`}
-                  style={{
-                    transform: `translateY(${getCardTransform(index)}%)`,
-                    opacity: isVisible ? 1 : 0,
-                    pointerEvents: isActive ? 'auto' : 'none',
-                    transition: isDragging ? 'none' : undefined
-                  }}
-                >
-                  <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-                    {renderCard(card)}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            // Loading state
-            <div className="loading-state">
-              <Sparkles size={48} className="loading-icon" />
-              <p>Preparando tus tareas...</p>
-            </div>
-          )}
-        </div>
+              })
+            ) : (
+              // Loading state
+              <div className="loading-state">
+                <Sparkles size={48} className="loading-icon" />
+                <p>Preparando tus tareas...</p>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'progress' ? (
+          <ProgressView 
+            completedTasks={completedTasks} 
+            dayNumber={dayNumber}
+            userName={userName}
+          />
+        ) : (
+          /* Profile tab placeholder */
+          <div className="profile-placeholder">
+            <User size={48} />
+            <p>Perfil próximamente</p>
+          </div>
+        )}
       </div>
       
       {/* Bottom Tab Bar */}
