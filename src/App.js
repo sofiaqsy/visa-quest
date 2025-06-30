@@ -27,9 +27,6 @@ const WelcomeScreen = ({ onStart }) => {
       setIsLoaded(true);
       
       try {
-        // Track visit
-        await analyticsService.trackAction(currentUser?.uid, 'welcome_screen_view');
-        
         // Check if user already has a name saved
         const savedName = localStorage.getItem('visa-quest-user-name');
         const hasSeenWelcome = localStorage.getItem('visa-quest-has-seen-welcome');
@@ -40,21 +37,25 @@ const WelcomeScreen = ({ onStart }) => {
           // Check if we already have today's mood
           const savedMood = localStorage.getItem('visa-quest-daily-mood');
           if (savedMood) {
-            const parsed = JSON.parse(savedMood);
-            const today = new Date().toDateString();
-            
-            if (parsed.date === today) {
-              // Already have today's mood, skip to ready or dashboard
-              if (hasSeenWelcome) {
-                // Go directly to dashboard
-                await handleStart();
-                return;
-              } else {
-                // Show ready screen once
-                setSelectedMood(parsed);
-                setCurrentStep('ready');
-                return;
+            try {
+              const parsed = JSON.parse(savedMood);
+              const today = new Date().toDateString();
+              
+              if (parsed.date === today) {
+                // Already have today's mood, skip to ready or dashboard
+                if (hasSeenWelcome) {
+                  // Go directly to dashboard
+                  await handleStart();
+                  return;
+                } else {
+                  // Show ready screen once
+                  setSelectedMood(parsed);
+                  setCurrentStep('ready');
+                  return;
+                }
               }
+            } catch (e) {
+              console.error('Error parsing saved mood:', e);
             }
           }
           
@@ -70,14 +71,28 @@ const WelcomeScreen = ({ onStart }) => {
           setCurrentStep('greeting');
         }
         
-        // Update device activity
-        await userService.updateDeviceActivity();
+        // Try to track visit and update device activity, but don't fail if it doesn't work
+        try {
+          await analyticsService.trackAction(currentUser?.uid, 'welcome_screen_view');
+          await userService.updateDeviceActivity();
+        } catch (error) {
+          console.warn('Analytics/tracking error (non-critical):', error);
+        }
       } catch (error) {
         console.error('Error initializing welcome:', error);
         // On error, show greeting
         setCurrentStep('greeting');
       }
     };
+
+    // Initialize with a timeout to prevent getting stuck
+    const initTimeout = setTimeout(() => {
+      if (currentStep === 'checking') {
+        console.warn('Welcome initialization timeout - proceeding to greeting');
+        setIsLoaded(true);
+        setCurrentStep('greeting');
+      }
+    }, 3000); // 3 second timeout
 
     // Small delay to ensure everything is loaded
     const timer = setTimeout(() => {
@@ -94,7 +109,10 @@ const WelcomeScreen = ({ onStart }) => {
       setShowInstallPrompt(true);
     }, 10000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(initTimeout);
+    };
   }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const moods = [
@@ -110,16 +128,20 @@ const WelcomeScreen = ({ onStart }) => {
     if (userName.trim()) {
       localStorage.setItem('visa-quest-user-name', userName.trim());
       
-      // Save to Firebase (device profile)
-      if (!currentUser) {
-        await userService.createDeviceProfile({
-          userName: userName.trim(),
-          firstSeen: new Date().toISOString()
-        });
+      // Try to save to Firebase, but don't fail if it doesn't work
+      try {
+        if (!currentUser) {
+          await userService.createDeviceProfile({
+            userName: userName.trim(),
+            firstSeen: new Date().toISOString()
+          });
+        }
+        
+        // Track action
+        analyticsService.trackAction(currentUser?.uid, 'name_submitted', { userName: userName.trim() });
+      } catch (error) {
+        console.warn('Error saving to Firebase (non-critical):', error);
       }
-      
-      // Track action
-      analyticsService.trackAction(currentUser?.uid, 'name_submitted', { userName: userName.trim() });
       
       setCurrentStep('mood');
     }
@@ -139,16 +161,20 @@ const WelcomeScreen = ({ onStart }) => {
     
     localStorage.setItem('visa-quest-daily-mood', JSON.stringify(moodData));
     
-    // Save to Firebase
-    await moodService.saveDailyMood(currentUser?.uid, {
-      mood: mood.value,
-      emoji: mood.emoji,
-      label: mood.label,
-      message: mood.message
-    });
-    
-    // Track action
-    analyticsService.trackAction(currentUser?.uid, 'mood_selected', { mood: mood.value });
+    // Try to save to Firebase, but don't fail if it doesn't work
+    try {
+      await moodService.saveDailyMood(currentUser?.uid, {
+        mood: mood.value,
+        emoji: mood.emoji,
+        label: mood.label,
+        message: mood.message
+      });
+      
+      // Track action
+      analyticsService.trackAction(currentUser?.uid, 'mood_selected', { mood: mood.value });
+    } catch (error) {
+      console.warn('Error saving mood to Firebase (non-critical):', error);
+    }
     
     setTimeout(() => {
       setCurrentStep('ready');
@@ -161,11 +187,19 @@ const WelcomeScreen = ({ onStart }) => {
     
     // If no user is logged in, continue as guest
     if (!currentUser) {
-      await continueAsGuest();
+      try {
+        await continueAsGuest();
+      } catch (error) {
+        console.warn('Error continuing as guest (non-critical):', error);
+      }
     }
     
-    // Track action
-    analyticsService.trackAction(currentUser?.uid, 'journey_started');
+    // Try to track action
+    try {
+      analyticsService.trackAction(currentUser?.uid, 'journey_started');
+    } catch (error) {
+      console.warn('Error tracking journey start (non-critical):', error);
+    }
     
     onStart();
   };
@@ -416,11 +450,15 @@ function App() {
       const checkMood = () => {
         const savedMood = localStorage.getItem('visa-quest-daily-mood');
         if (savedMood) {
-          const parsed = JSON.parse(savedMood);
-          const today = new Date().toDateString();
-          
-          if (parsed.date !== today && localStorage.getItem('visa-quest-has-seen-welcome')) {
-            setNeedsMoodCheck(true);
+          try {
+            const parsed = JSON.parse(savedMood);
+            const today = new Date().toDateString();
+            
+            if (parsed.date !== today && localStorage.getItem('visa-quest-has-seen-welcome')) {
+              setNeedsMoodCheck(true);
+            }
+          } catch (e) {
+            console.error('Error parsing mood:', e);
           }
         }
       };
