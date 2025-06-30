@@ -304,7 +304,6 @@ const ProgressView = ({ completedTasks, dayNumber, userName }) => {
   // Calculate streaks
   const calculateStreak = () => {
     let streak = 0;
-    let currentDate = new Date();
     
     for (let i = 0; i < dayNumber; i++) {
       const dayTasks = getTasksByDay(dayNumber - i);
