@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginForm from './components/Auth/LoginForm';
 import { registerSW, requestNotificationPermission } from './hooks/usePWA';
 import PWAInstallButton, { OfflineIndicator, InstallPrompt } from './components/PWAInstallButton';
+import { moodService, userService, analyticsService } from './firebase/services';
 
 // Protected Route component - Modified to allow guest access
 const ProtectedRoute = ({ children }) => {
@@ -22,6 +23,9 @@ const WelcomeScreen = ({ onStart }) => {
 
   useEffect(() => {
     setIsLoaded(true);
+    
+    // Track visit
+    analyticsService.trackAction(currentUser?.uid, 'welcome_screen_view');
     
     // Check if user already has a name saved
     const savedName = localStorage.getItem('visa-quest-user-name');
@@ -62,6 +66,9 @@ const WelcomeScreen = ({ onStart }) => {
       setCurrentStep('greeting');
     }
     
+    // Update device activity
+    userService.updateDeviceActivity();
+    
     // Request notification permission gently
     setTimeout(() => {
       requestNotificationPermission();
@@ -81,23 +88,51 @@ const WelcomeScreen = ({ onStart }) => {
     { emoji: '😰', label: 'Ansiosa', value: 'anxious', message: 'Respira hondo, vamos a organizarlo todo juntas' }
   ];
 
-  const handleNameSubmit = (e) => {
+  const handleNameSubmit = async (e) => {
     e.preventDefault();
     if (userName.trim()) {
       localStorage.setItem('visa-quest-user-name', userName.trim());
+      
+      // Save to Firebase (device profile)
+      if (!currentUser) {
+        await userService.createDeviceProfile({
+          userName: userName.trim(),
+          firstSeen: new Date().toISOString()
+        });
+      }
+      
+      // Track action
+      analyticsService.trackAction(currentUser?.uid, 'name_submitted', { userName: userName.trim() });
+      
       setCurrentStep('mood');
     }
   };
 
-  const handleMoodSelect = (mood) => {
+  const handleMoodSelect = async (mood) => {
     setSelectedMood(mood);
-    localStorage.setItem('visa-quest-daily-mood', JSON.stringify({
+    
+    // Save locally
+    const moodData = {
       mood: mood.value,
       date: new Date().toDateString(),
       message: mood.message,
       emoji: mood.emoji,
       label: mood.label
-    }));
+    };
+    
+    localStorage.setItem('visa-quest-daily-mood', JSON.stringify(moodData));
+    
+    // Save to Firebase
+    await moodService.saveDailyMood(currentUser?.uid, {
+      mood: mood.value,
+      emoji: mood.emoji,
+      label: mood.label,
+      message: mood.message
+    });
+    
+    // Track action
+    analyticsService.trackAction(currentUser?.uid, 'mood_selected', { mood: mood.value });
+    
     setTimeout(() => {
       setCurrentStep('ready');
     }, 1500);
@@ -111,6 +146,10 @@ const WelcomeScreen = ({ onStart }) => {
     if (!currentUser) {
       await continueAsGuest();
     }
+    
+    // Track action
+    analyticsService.trackAction(currentUser?.uid, 'journey_started');
+    
     onStart();
   };
 
@@ -345,25 +384,39 @@ const Dashboard = ({ onBack }) => {
   const [userName] = useState(localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Viajera');
   const [todayMood, setTodayMood] = useState(null);
   const [needsMoodCheck, setNeedsMoodCheck] = useState(false);
+  const [moodStreak, setMoodStreak] = useState(0);
 
   useEffect(() => {
     // Check if we have today's mood
-    const saved = localStorage.getItem('visa-quest-daily-mood');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const today = new Date().toDateString();
-      
-      if (parsed.date === today) {
-        setTodayMood(parsed);
+    const checkTodayMood = async () => {
+      const saved = localStorage.getItem('visa-quest-daily-mood');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const today = new Date().toDateString();
+        
+        if (parsed.date === today) {
+          setTodayMood(parsed);
+          
+          // Get mood statistics from Firebase
+          const stats = await moodService.getMoodStats(currentUser?.uid);
+          if (stats) {
+            setMoodStreak(stats.currentStreak);
+          }
+        } else {
+          // Need to ask for today's mood
+          setNeedsMoodCheck(true);
+        }
       } else {
-        // Need to ask for today's mood
+        // First time, need mood
         setNeedsMoodCheck(true);
       }
-    } else {
-      // First time, need mood
-      setNeedsMoodCheck(true);
-    }
-  }, []);
+    };
+    
+    checkTodayMood();
+    
+    // Track dashboard view
+    analyticsService.trackAction(currentUser?.uid, 'dashboard_view');
+  }, [currentUser]);
 
   const handleLogout = async () => {
     try {
@@ -430,6 +483,15 @@ const Dashboard = ({ onBack }) => {
                   Crea una cuenta
                 </a> para sincronizar tu progreso en todos tus dispositivos.
               </p>
+            </div>
+          )}
+          
+          {/* Mood streak indicator */}
+          {moodStreak > 0 && (
+            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-4 mb-4 text-center">
+              <div className="text-3xl mb-1">🔥</div>
+              <p className="text-lg font-bold">¡{moodStreak} días seguidos!</p>
+              <p className="text-sm opacity-90">Mantén tu racha registrando tu estado de ánimo diario</p>
             </div>
           )}
           
