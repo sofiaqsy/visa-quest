@@ -10,9 +10,40 @@ import {
   orderBy, 
   limit,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
+  setDoc
 } from 'firebase/firestore';
 import { db } from './config';
+
+// Generate a unique device ID if not exists
+const getDeviceId = () => {
+  let deviceId = localStorage.getItem('visa-quest-device-id');
+  if (!deviceId) {
+    // Generate a unique ID for this device
+    deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('visa-quest-device-id', deviceId);
+  }
+  return deviceId;
+};
+
+// Get device info
+const getDeviceInfo = () => {
+  const ua = navigator.userAgent;
+  const isMobile = /Mobile|Android|iPhone|iPad/i.test(ua);
+  const platform = navigator.platform || 'Unknown';
+  
+  return {
+    deviceId: getDeviceId(),
+    userAgent: ua,
+    platform: platform,
+    isMobile: isMobile,
+    screenWidth: window.screen.width,
+    screenHeight: window.screen.height,
+    language: navigator.language,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    lastSeen: serverTimestamp()
+  };
+};
 
 // User data management
 export const userService = {
@@ -20,10 +51,10 @@ export const userService = {
   async saveUserProfile(userId, userData) {
     try {
       const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, {
+      await setDoc(userRef, {
         ...userData,
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
       console.log('VisaQuest: User profile saved');
       return true;
     } catch (error) {
@@ -50,37 +81,85 @@ export const userService = {
     }
   },
 
-  // Create initial user profile
-  async createUserProfile(userId, userData) {
+  // Create anonymous device profile
+  async createDeviceProfile(deviceData) {
     try {
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, {
-        ...userData,
+      const deviceId = getDeviceId();
+      const deviceRef = doc(db, 'devices', deviceId);
+      
+      await setDoc(deviceRef, {
+        ...deviceData,
+        ...getDeviceInfo(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
-      console.log('VisaQuest: User profile created');
-      return true;
+      }, { merge: true });
+      
+      console.log('VisaQuest: Device profile created');
+      return deviceId;
     } catch (error) {
-      console.error('VisaQuest: Error creating user profile:', error);
-      return false;
+      console.error('VisaQuest: Error creating device profile:', error);
+      return null;
+    }
+  },
+
+  // Update device activity
+  async updateDeviceActivity() {
+    try {
+      const deviceId = getDeviceId();
+      const deviceRef = doc(db, 'devices', deviceId);
+      
+      await updateDoc(deviceRef, {
+        lastSeen: serverTimestamp(),
+        visitCount: increment(1)
+      });
+    } catch (error) {
+      // If document doesn't exist, create it
+      await this.createDeviceProfile({});
     }
   }
 };
 
-// Mood tracking
+// Mood tracking - Enhanced with device tracking
 export const moodService = {
   // Save daily mood
   async saveDailyMood(userId, moodData) {
     try {
+      // Determine the ID to use (user ID or device ID)
+      const identifier = userId || getDeviceId();
+      const isAnonymous = !userId;
+      
       const moodRef = collection(db, 'moods');
-      await addDoc(moodRef, {
-        userId,
+      const docData = {
+        identifier,
+        isAnonymous,
         ...moodData,
         date: new Date().toDateString(),
-        timestamp: serverTimestamp()
-      });
+        timestamp: serverTimestamp(),
+        deviceInfo: getDeviceInfo()
+      };
+      
+      // If authenticated user, add userId
+      if (userId) {
+        docData.userId = userId;
+      }
+      
+      await addDoc(moodRef, docData);
       console.log('VisaQuest: Daily mood saved');
+      
+      // Update user or device profile with latest mood
+      if (userId) {
+        await userService.saveUserProfile(userId, {
+          lastMood: moodData,
+          lastMoodDate: new Date().toDateString()
+        });
+      } else {
+        await userService.createDeviceProfile({
+          lastMood: moodData,
+          lastMoodDate: new Date().toDateString(),
+          userName: localStorage.getItem('visa-quest-user-name') || 'Anónimo'
+        });
+      }
+      
       return true;
     } catch (error) {
       console.error('VisaQuest: Error saving mood:', error);
@@ -88,13 +167,14 @@ export const moodService = {
     }
   },
 
-  // Get mood history
+  // Get mood history (by user or device)
   async getMoodHistory(userId, days = 30) {
     try {
+      const identifier = userId || getDeviceId();
       const moodRef = collection(db, 'moods');
       const q = query(
         moodRef,
-        where('userId', '==', userId),
+        where('identifier', '==', identifier),
         orderBy('timestamp', 'desc'),
         limit(days)
       );
@@ -115,11 +195,12 @@ export const moodService = {
   // Get today's mood
   async getTodayMood(userId) {
     try {
+      const identifier = userId || getDeviceId();
       const today = new Date().toDateString();
       const moodRef = collection(db, 'moods');
       const q = query(
         moodRef,
-        where('userId', '==', userId),
+        where('identifier', '==', identifier),
         where('date', '==', today)
       );
       
@@ -133,6 +214,69 @@ export const moodService = {
       console.error('VisaQuest: Error getting today mood:', error);
       return null;
     }
+  },
+
+  // Get mood statistics
+  async getMoodStats(userId) {
+    try {
+      const moods = await this.getMoodHistory(userId, 365); // Get last year
+      
+      if (moods.length === 0) return null;
+      
+      // Calculate statistics
+      const moodCounts = {};
+      const moodByWeek = {};
+      const currentStreak = this.calculateStreak(moods);
+      
+      moods.forEach(mood => {
+        // Count moods
+        moodCounts[mood.mood] = (moodCounts[mood.mood] || 0) + 1;
+        
+        // Group by week
+        const week = new Date(mood.timestamp.toDate()).toISOString().slice(0, 10);
+        if (!moodByWeek[week]) moodByWeek[week] = [];
+        moodByWeek[week].push(mood);
+      });
+      
+      return {
+        totalDays: moods.length,
+        moodCounts,
+        currentStreak,
+        moodByWeek,
+        mostCommonMood: Object.keys(moodCounts).reduce((a, b) => 
+          moodCounts[a] > moodCounts[b] ? a : b
+        )
+      };
+    } catch (error) {
+      console.error('VisaQuest: Error getting mood stats:', error);
+      return null;
+    }
+  },
+
+  // Calculate consecutive days streak
+  calculateStreak(moods) {
+    if (moods.length === 0) return 0;
+    
+    let streak = 1;
+    const today = new Date().toDateString();
+    
+    // Check if the first mood is from today
+    if (moods[0].date !== today) return 0;
+    
+    // Count consecutive days
+    for (let i = 1; i < moods.length; i++) {
+      const prevDate = new Date(moods[i-1].date);
+      const currDate = new Date(moods[i].date);
+      const diffDays = Math.floor((prevDate - currDate) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
   }
 };
 
@@ -141,11 +285,14 @@ export const progressService = {
   // Save task completion
   async completeTask(userId, taskData) {
     try {
+      const identifier = userId || getDeviceId();
       const taskRef = collection(db, 'completedTasks');
       await addDoc(taskRef, {
-        userId,
+        identifier,
+        userId: userId || null,
         ...taskData,
-        completedAt: serverTimestamp()
+        completedAt: serverTimestamp(),
+        deviceInfo: getDeviceInfo()
       });
       console.log('VisaQuest: Task completed');
       return true;
@@ -158,10 +305,11 @@ export const progressService = {
   // Get user progress
   async getUserProgress(userId) {
     try {
+      const identifier = userId || getDeviceId();
       const tasksRef = collection(db, 'completedTasks');
       const q = query(
         tasksRef,
-        where('userId', '==', userId),
+        where('identifier', '==', identifier),
         orderBy('completedAt', 'desc')
       );
       
@@ -181,22 +329,72 @@ export const progressService = {
   // Update overall progress
   async updateProgress(userId, progressData) {
     try {
-      const progressRef = doc(db, 'userProgress', userId);
-      await updateDoc(progressRef, {
+      const identifier = userId || getDeviceId();
+      const progressRef = doc(db, 'userProgress', identifier);
+      await setDoc(progressRef, {
+        identifier,
+        userId: userId || null,
         ...progressData,
-        updatedAt: serverTimestamp()
-      });
+        updatedAt: serverTimestamp(),
+        deviceInfo: getDeviceInfo()
+      }, { merge: true });
       console.log('VisaQuest: Progress updated');
       return true;
     } catch (error) {
       console.error('VisaQuest: Error updating progress:', error);
       return false;
     }
+  },
+
+  // Link anonymous data to user account
+  async linkAnonymousDataToUser(userId) {
+    try {
+      const deviceId = getDeviceId();
+      
+      // Update moods
+      const moodsRef = collection(db, 'moods');
+      const moodsQuery = query(moodsRef, where('identifier', '==', deviceId));
+      const moodsSnapshot = await getDocs(moodsQuery);
+      
+      const batch = writeBatch(db);
+      moodsSnapshot.forEach((doc) => {
+        batch.update(doc.ref, {
+          userId: userId,
+          identifier: userId,
+          isAnonymous: false,
+          linkedAt: serverTimestamp()
+        });
+      });
+      
+      // Update tasks
+      const tasksRef = collection(db, 'completedTasks');
+      const tasksQuery = query(tasksRef, where('identifier', '==', deviceId));
+      const tasksSnapshot = await getDocs(tasksQuery);
+      
+      tasksSnapshot.forEach((doc) => {
+        batch.update(doc.ref, {
+          userId: userId,
+          identifier: userId,
+          linkedAt: serverTimestamp()
+        });
+      });
+      
+      await batch.commit();
+      console.log('VisaQuest: Anonymous data linked to user account');
+      return true;
+    } catch (error) {
+      console.error('VisaQuest: Error linking anonymous data:', error);
+      return false;
+    }
   }
 };
 
-// Community features
+// Import necessary Firestore functions
+import { increment, writeBatch } from 'firebase/firestore';
+
+// Community features (unchanged)
 export const communityService = {
+  // ... existing community service code ...
   // Add success story
   async addSuccessStory(userId, storyData) {
     try {
@@ -235,7 +433,7 @@ export const communityService = {
       return stories;
     } catch (error) {
       console.error('VisaQuest: Error getting success stories:', error);
-      return [];
+      return [];;
     }
   },
 
@@ -259,11 +457,12 @@ export const communityService = {
   }
 };
 
-// Real-time listeners
+// Real-time listeners (unchanged)
 export const realtimeService = {
   // Listen to user progress changes
   subscribeToProgress(userId, callback) {
-    const progressRef = doc(db, 'userProgress', userId);
+    const identifier = userId || getDeviceId();
+    const progressRef = doc(db, 'userProgress', identifier);
     return onSnapshot(progressRef, (doc) => {
       if (doc.exists()) {
         callback({ id: doc.id, ...doc.data() });
@@ -295,12 +494,15 @@ export const analyticsService = {
   // Track user action
   async trackAction(userId, action, data = {}) {
     try {
+      const identifier = userId || getDeviceId();
       const actionRef = collection(db, 'userActions');
       await addDoc(actionRef, {
-        userId,
+        identifier,
+        userId: userId || null,
         action,
         data,
-        timestamp: serverTimestamp()
+        timestamp: serverTimestamp(),
+        deviceInfo: getDeviceInfo()
       });
       return true;
     } catch (error) {
@@ -312,10 +514,11 @@ export const analyticsService = {
   // Get user insights
   async getUserInsights(userId) {
     try {
+      const identifier = userId || getDeviceId();
       const actionsRef = collection(db, 'userActions');
       const q = query(
         actionsRef,
-        where('userId', '==', userId),
+        where('identifier', '==', identifier),
         orderBy('timestamp', 'desc'),
         limit(100)
       );
