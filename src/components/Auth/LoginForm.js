@@ -10,7 +10,7 @@ const LoginForm = () => {
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login, signup, signInWithGoogle, error, setError } = useAuth();
+  const { login, signup, signInWithGoogle, continueAsGuest, error, setError } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -41,6 +41,20 @@ const LoginForm = () => {
       navigate('/dashboard');
     } catch (error) {
       console.error('Google sign-in error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuestMode = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      await continueAsGuest();
+      navigate('/');
+    } catch (error) {
+      console.error('Guest mode error:', error);
     } finally {
       setLoading(false);
     }
@@ -133,6 +147,15 @@ const LoginForm = () => {
           Continuar con Google
         </button>
 
+        <button 
+          onClick={handleGuestMode}
+          className="btn-guest"
+          disabled={loading}
+        >
+          <span className="guest-icon">👤</span>
+          Continuar sin cuenta
+        </button>
+
         <p className="auth-switch">
           {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
           <button 
@@ -143,6 +166,12 @@ const LoginForm = () => {
             {isLogin ? 'Regístrate' : 'Inicia sesión'}
           </button>
         </p>
+
+        <div className="guest-info">
+          <p className="text-xs text-gray-500 text-center mt-4">
+            💡 Puedes usar la app sin crear cuenta, pero tu progreso solo se guardará en este dispositivo
+          </p>
+        </div>
       </div>
     </div>
   );
