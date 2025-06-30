@@ -13,7 +13,7 @@ const ProtectedRoute = ({ children }) => {
 
 // Gentle welcome screen component
 const WelcomeScreen = ({ onStart }) => {
-  const [currentStep, setCurrentStep] = useState('greeting'); // greeting, mood, ready
+  const [currentStep, setCurrentStep] = useState('checking'); // checking, greeting, mood, ready
   const [selectedMood, setSelectedMood] = useState(null);
   const [userName, setUserName] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
@@ -22,12 +22,44 @@ const WelcomeScreen = ({ onStart }) => {
 
   useEffect(() => {
     setIsLoaded(true);
-    // Check if user has a name saved
+    
+    // Check if user already has a name saved
     const savedName = localStorage.getItem('visa-quest-user-name');
+    const hasSeenWelcome = localStorage.getItem('visa-quest-has-seen-welcome');
+    
     if (savedName) {
       setUserName(savedName);
+      
+      // Check if we already have today's mood
+      const savedMood = localStorage.getItem('visa-quest-daily-mood');
+      if (savedMood) {
+        const parsed = JSON.parse(savedMood);
+        const today = new Date().toDateString();
+        
+        if (parsed.date === today) {
+          // Already have today's mood, skip to ready or dashboard
+          if (hasSeenWelcome) {
+            // Go directly to dashboard
+            handleStart();
+          } else {
+            // Show ready screen once
+            setSelectedMood(parsed);
+            setCurrentStep('ready');
+          }
+          return;
+        }
+      }
+      
+      // Have name but need today's mood
+      setCurrentStep('mood');
     } else if (currentUser?.displayName) {
+      // Use display name from auth
       setUserName(currentUser.displayName);
+      localStorage.setItem('visa-quest-user-name', currentUser.displayName);
+      setCurrentStep('mood');
+    } else {
+      // First time user
+      setCurrentStep('greeting');
     }
     
     // Request notification permission gently
@@ -39,7 +71,7 @@ const WelcomeScreen = ({ onStart }) => {
     setTimeout(() => {
       setShowInstallPrompt(true);
     }, 10000);
-  }, [currentUser]);
+  }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const moods = [
     { emoji: '😊', label: 'Bien', value: 'good', message: '¡Qué bueno! Aprovechemos esa energía positiva' },
@@ -62,7 +94,9 @@ const WelcomeScreen = ({ onStart }) => {
     localStorage.setItem('visa-quest-daily-mood', JSON.stringify({
       mood: mood.value,
       date: new Date().toDateString(),
-      message: mood.message
+      message: mood.message,
+      emoji: mood.emoji,
+      label: mood.label
     }));
     setTimeout(() => {
       setCurrentStep('ready');
@@ -70,6 +104,9 @@ const WelcomeScreen = ({ onStart }) => {
   };
 
   const handleStart = async () => {
+    // Mark that user has seen welcome
+    localStorage.setItem('visa-quest-has-seen-welcome', 'true');
+    
     // If no user is logged in, continue as guest
     if (!currentUser) {
       await continueAsGuest();
@@ -77,7 +114,19 @@ const WelcomeScreen = ({ onStart }) => {
     onStart();
   };
 
-  // Greeting Step
+  // Loading/Checking state
+  if (currentStep === 'checking') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-pulse">✨</div>
+          <p className="text-gray-600">Preparando tu experiencia...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Greeting Step - Only shown first time
   if (currentStep === 'greeting') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col">
@@ -140,7 +189,7 @@ const WelcomeScreen = ({ onStart }) => {
     );
   }
 
-  // Mood Check Step
+  // Mood Check Step - Shown once per day
   if (currentStep === 'mood') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col">
@@ -156,7 +205,7 @@ const WelcomeScreen = ({ onStart }) => {
                 ¡Hola {userName}!
               </h2>
               <p className="text-lg text-gray-600">
-                Antes de empezar, me gustaría saber...
+                Antes de empezar el día, me gustaría saber...
               </p>
             </div>
 
@@ -189,7 +238,7 @@ const WelcomeScreen = ({ onStart }) => {
             </div>
 
             <div className="text-center text-sm text-gray-500 mt-4">
-              <p>💡 Esta información me ayuda a personalizar tu experiencia</p>
+              <p>💡 Esta información me ayuda a personalizar tu experiencia de hoy</p>
             </div>
           </div>
         </div>
@@ -197,7 +246,7 @@ const WelcomeScreen = ({ onStart }) => {
     );
   }
 
-  // Ready to start step
+  // Ready to start step - Only shown once after mood selection
   if (currentStep === 'ready') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col">
@@ -217,38 +266,40 @@ const WelcomeScreen = ({ onStart }) => {
               </p>
             </div>
 
-            {/* Journey overview */}
-            <div className="bg-white rounded-2xl p-6 shadow-lg mb-6 slide-up" style={{ animationDelay: '0.3s' }}>
-              <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">
-                Tu plan personalizado de 21 días
-              </h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center space-x-4 p-3 bg-green-50 rounded-xl">
-                  <span className="text-2xl">📋</span>
-                  <div>
-                    <div className="font-semibold text-green-800">Semana 1: Organización</div>
-                    <div className="text-sm text-green-600">Documentos y preparación básica</div>
-                  </div>
-                </div>
+            {/* Journey overview - Only show first time */}
+            {!localStorage.getItem('visa-quest-has-seen-welcome') && (
+              <div className="bg-white rounded-2xl p-6 shadow-lg mb-6 slide-up" style={{ animationDelay: '0.3s' }}>
+                <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">
+                  Tu plan personalizado de 21 días
+                </h3>
                 
-                <div className="flex items-center space-x-4 p-3 bg-blue-50 rounded-xl">
-                  <span className="text-2xl">✈️</span>
-                  <div>
-                    <div className="font-semibold text-blue-800">Semana 2: Planificación</div>
-                    <div className="text-sm text-blue-600">Itinerario y reservas</div>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-4 p-3 bg-green-50 rounded-xl">
+                    <span className="text-2xl">📋</span>
+                    <div>
+                      <div className="font-semibold text-green-800">Semana 1: Organización</div>
+                      <div className="text-sm text-green-600">Documentos y preparación básica</div>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex items-center space-x-4 p-3 bg-purple-50 rounded-xl">
-                  <span className="text-2xl">🚀</span>
-                  <div>
-                    <div className="font-semibold text-purple-800">Semana 3: Aplicación</div>
-                    <div className="text-sm text-purple-600">Envío y seguimiento</div>
+                  
+                  <div className="flex items-center space-x-4 p-3 bg-blue-50 rounded-xl">
+                    <span className="text-2xl">✈️</span>
+                    <div>
+                      <div className="font-semibold text-blue-800">Semana 2: Planificación</div>
+                      <div className="text-sm text-blue-600">Itinerario y reservas</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4 p-3 bg-purple-50 rounded-xl">
+                    <span className="text-2xl">🚀</span>
+                    <div>
+                      <div className="font-semibold text-purple-800">Semana 3: Aplicación</div>
+                      <div className="text-sm text-purple-600">Envío y seguimiento</div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Call to action */}
             <button
@@ -256,7 +307,7 @@ const WelcomeScreen = ({ onStart }) => {
               className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-green-600 hover:to-blue-600 transform hover:scale-105 transition-all duration-300 pulse-glow slide-up"
               style={{ animationDelay: '0.6s' }}
             >
-              ¡Empecemos juntas! 🌟
+              ¡Empecemos el día! 🌟
             </button>
 
             {/* Account options */}
@@ -292,16 +343,27 @@ const WelcomeScreen = ({ onStart }) => {
 const Dashboard = ({ onBack }) => {
   const { currentUser, logout, isGuest } = useAuth();
   const [userName] = useState(localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Viajera');
-  const [todayMood] = useState(() => {
+  const [todayMood, setTodayMood] = useState(null);
+  const [needsMoodCheck, setNeedsMoodCheck] = useState(false);
+
+  useEffect(() => {
+    // Check if we have today's mood
     const saved = localStorage.getItem('visa-quest-daily-mood');
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed.date === new Date().toDateString()) {
-        return parsed;
+      const today = new Date().toDateString();
+      
+      if (parsed.date === today) {
+        setTodayMood(parsed);
+      } else {
+        // Need to ask for today's mood
+        setNeedsMoodCheck(true);
       }
+    } else {
+      // First time, need mood
+      setNeedsMoodCheck(true);
     }
-    return null;
-  });
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -310,6 +372,11 @@ const Dashboard = ({ onBack }) => {
       console.error('Error logging out:', error);
     }
   };
+
+  // If needs mood check, redirect to welcome screen
+  if (needsMoodCheck) {
+    return <Navigate to="/" />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -375,8 +442,12 @@ const Dashboard = ({ onBack }) => {
             
             {todayMood && (
               <div className="bg-blue-50 rounded-xl p-4 mb-4">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <span className="text-2xl">{todayMood.emoji}</span>
+                  <span className="font-semibold text-blue-800">{todayMood.label}</span>
+                </div>
                 <p className="text-sm text-blue-700">
-                  Hoy te sientes <strong>{todayMood.mood}</strong> y recuerda: {todayMood.message}
+                  {todayMood.message}
                 </p>
               </div>
             )}
