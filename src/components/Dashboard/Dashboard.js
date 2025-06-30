@@ -1,26 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { moodService, progressService, analyticsService } from '../../firebase/services';
-import { CheckCircle, Circle, Calendar, Heart, TrendingUp, Award, ChevronUp, ChevronDown, Sparkles, BookOpen, Globe, Users, Star, RefreshCw } from 'lucide-react';
+import { CheckCircle, Circle, ChevronUp, ChevronDown, Sparkles, BookOpen, RefreshCw, User, Home, Trophy } from 'lucide-react';
 import './Dashboard.css';
 
 // Card types for different activities
 const CARD_TYPES = {
-  WELCOME: 'welcome',
-  PROGRESS: 'progress',
   TASK: 'task',
-  TIP: 'tip',
-  MOTIVATION: 'motivation',
-  COMMUNITY: 'community',
-  COMPLETE: 'complete'
+  TIP: 'tip'
 };
 
-// Daily tasks data organized by day and as cards
-const getCardsByDay = (dayNumber, completedTasks = []) => {
+// Daily tasks data organized by day
+const getTasksByDay = (dayNumber) => {
   const tasksByDay = {
     1: [
       { 
-        type: CARD_TYPES.TASK, 
         id: 'task_1_1', 
         icon: '📋',
         title: "Revisar requisitos de visa",
@@ -31,7 +25,6 @@ const getCardsByDay = (dayNumber, completedTasks = []) => {
         tips: ['Guarda la lista en tu teléfono', 'Marca los documentos que ya tienes']
       },
       { 
-        type: CARD_TYPES.TASK, 
         id: 'task_1_2', 
         icon: '🛂',
         title: "Verificar pasaporte",
@@ -42,7 +35,6 @@ const getCardsByDay = (dayNumber, completedTasks = []) => {
         tips: ['Revisa la fecha de vencimiento', 'Toma una foto clara de la página principal']
       },
       { 
-        type: CARD_TYPES.TASK, 
         id: 'task_1_3', 
         icon: '📁',
         title: "Crear carpeta digital",
@@ -55,7 +47,6 @@ const getCardsByDay = (dayNumber, completedTasks = []) => {
     ],
     2: [
       { 
-        type: CARD_TYPES.TASK, 
         id: 'task_2_1', 
         icon: '📸',
         title: "Fotografías para visa",
@@ -66,7 +57,6 @@ const getCardsByDay = (dayNumber, completedTasks = []) => {
         tips: ['Fondo blanco sin sombras', 'Sin lentes ni accesorios', 'Expresión neutral']
       },
       { 
-        type: CARD_TYPES.TASK, 
         id: 'task_2_2', 
         icon: '💰',
         title: "Estado de cuenta bancario",
@@ -77,7 +67,6 @@ const getCardsByDay = (dayNumber, completedTasks = []) => {
         tips: ['Puede ser digital o físico', 'Debe mostrar tu nombre completo', 'Saldo promedio importante']
       },
       { 
-        type: CARD_TYPES.TASK, 
         id: 'task_2_3', 
         icon: '💼',
         title: "Carta de empleo",
@@ -88,88 +77,107 @@ const getCardsByDay = (dayNumber, completedTasks = []) => {
         tips: ['En papel membretado', 'Firmada y sellada', 'Mencione tu permiso de vacaciones']
       }
     ],
-    // Add more days...
+    3: [
+      {
+        id: 'task_3_1',
+        icon: '✈️',
+        title: "Itinerario de vuelo",
+        description: "Reserva o cotiza tus vuelos de ida y vuelta",
+        time: "45 min",
+        emoji: '🎫',
+        color: 'from-cyan-400 to-cyan-600',
+        tips: ['No pagues hasta tener la visa', 'Guarda las cotizaciones en PDF', 'Fechas flexibles son mejores']
+      },
+      {
+        id: 'task_3_2',
+        icon: '🏨',
+        title: "Reserva de hotel",
+        description: "Busca alojamiento con cancelación gratuita",
+        time: "30 min",
+        emoji: '🛏️',
+        color: 'from-orange-400 to-orange-600',
+        tips: ['Booking.com tiene cancelación gratis', 'Imprime las confirmaciones', 'Cerca de transporte público']
+      },
+      {
+        id: 'task_3_3',
+        icon: '🗺️',
+        title: "Plan de viaje",
+        description: "Crea un itinerario día por día de tu visita",
+        time: "25 min",
+        emoji: '📍',
+        color: 'from-red-400 to-red-600',
+        tips: ['Incluye lugares turísticos', 'Agrega direcciones', 'Demuestra que volverás']
+      }
+    ]
   };
   
-  const dayTasks = tasksByDay[dayNumber] || tasksByDay[1];
-  
-  // Mark completed tasks
-  return dayTasks.map(task => ({
-    ...task,
-    completed: completedTasks.includes(task.id)
-  }));
+  return tasksByDay[dayNumber] || tasksByDay[1];
 };
 
-// Get all cards for a day including non-task cards
-const getDailyCards = (dayNumber, userName, todayMood, progress, moodStreak, completedTasks) => {
-  const cards = [];
-  
-  // Welcome card
-  cards.push({
-    type: CARD_TYPES.WELCOME,
-    id: 'welcome',
-    greeting: getTimeOfDayGreeting(),
-    userName,
-    dayNumber,
-    mood: todayMood,
-    color: 'from-gradient-start to-gradient-end'
-  });
-  
-  // Progress card
-  cards.push({
-    type: CARD_TYPES.PROGRESS,
-    id: 'progress',
-    progress,
-    dayNumber,
-    moodStreak,
-    totalDays: 21,
-    color: 'from-green-400 to-blue-500'
-  });
-  
-  // Task cards
-  const taskCards = getCardsByDay(dayNumber, completedTasks);
-  cards.push(...taskCards);
-  
-  // Tip card after every 2 tasks
-  cards.splice(4, 0, {
-    type: CARD_TYPES.TIP,
-    id: 'tip_1',
-    title: "💡 Consejo del día",
-    content: "Guarda todos tus documentos en PDF y mantenlos organizados en carpetas",
-    color: 'from-cyan-400 to-cyan-600'
-  });
-  
-  // Motivation card
-  const quotes = [
-    { text: "Cada documento es un paso más cerca de tu sueño canadiense 🇨🇦", author: "VisaQuest" },
-    { text: "El viaje de mil millas comienza con un solo paso ✨", author: "Lao Tzu" },
-    { text: "Tu futuro en Canadá está más cerca de lo que piensas 🌟", author: "VisaQuest" }
+// Daily tips
+const getDailyTips = (dayNumber) => {
+  const tips = [
+    {
+      id: `tip_${dayNumber}_1`,
+      title: "💡 Consejo del día",
+      content: "Guarda todos tus documentos en PDF y mantenlos organizados en carpetas. Así podrás acceder rápidamente cuando los necesites.",
+      color: 'from-cyan-400 to-cyan-600'
+    },
+    {
+      id: `tip_${dayNumber}_2`,
+      title: "🌟 Tip profesional",
+      content: "Toma fotos de todos tus documentos originales. Si algo se pierde, tendrás respaldo digital inmediato.",
+      color: 'from-purple-400 to-pink-600'
+    },
+    {
+      id: `tip_${dayNumber}_3`,
+      title: "⚡ Dato rápido",
+      content: "Las embajadas valoran mucho la organización. Un expediente bien ordenado causa mejor impresión.",
+      color: 'from-yellow-400 to-orange-600'
+    }
   ];
   
-  cards.push({
-    type: CARD_TYPES.MOTIVATION,
-    id: 'motivation',
-    quote: quotes[dayNumber % quotes.length],
-    color: 'from-purple-400 to-pink-600'
+  return tips[dayNumber % tips.length];
+};
+
+// Motivational quotes that rotate
+const motivationalQuotes = [
+  "Cada documento es un paso más cerca de tu sueño canadiense 🇨🇦",
+  "El viaje de mil millas comienza con un solo paso ✨",
+  "Tu futuro en Canadá está más cerca de lo que piensas 🌟",
+  "Hoy es el día perfecto para avanzar hacia tus metas 🚀",
+  "Confía en el proceso, todo saldrá bien 💝"
+];
+
+// Get all cards for a day
+const getDailyCards = (dayNumber, completedTasks) => {
+  const cards = [];
+  const tasks = getTasksByDay(dayNumber);
+  
+  // Add tasks with their completion status
+  tasks.forEach((task, index) => {
+    cards.push({
+      type: CARD_TYPES.TASK,
+      ...task,
+      completed: completedTasks.includes(task.id)
+    });
+    
+    // Add a tip after every 2 tasks
+    if ((index + 1) % 2 === 0) {
+      cards.push({
+        type: CARD_TYPES.TIP,
+        ...getDailyTips(dayNumber + index)
+      });
+    }
   });
   
-  // Community card
-  cards.push({
-    type: CARD_TYPES.COMMUNITY,
-    id: 'community',
-    activeUsers: 1234,
-    approvedVisas: 89,
-    color: 'from-orange-400 to-red-500'
-  });
-  
-  // Completion card
-  cards.push({
-    type: CARD_TYPES.COMPLETE,
-    id: 'complete',
-    completedToday: taskCards.filter(t => t.completed).length,
-    totalToday: taskCards.length,
-    color: 'from-green-500 to-green-600'
-  });
+  // Add final tip if not already added
+  if (tasks.length % 2 !== 0) {
+    cards.push({
+      type: CARD_TYPES.TIP,
+      ...getDailyTips(dayNumber)
+    });
+  }
   
   return cards;
 };
@@ -182,61 +190,30 @@ const getTimeOfDayGreeting = () => {
   return "Buenas noches";
 };
 
-// Card Components
-const WelcomeCard = ({ card }) => (
-  <div className="card-content welcome-card">
-    <div className="welcome-header">
-      <h1 className="welcome-greeting">{card.greeting}, {card.userName}! 👋</h1>
-      <p className="welcome-subtitle">Día {card.dayNumber} de tu viaje hacia Canadá</p>
-    </div>
-    
-    {card.mood && (
-      <div className="mood-display">
-        <span className="mood-emoji-large">{card.mood.emoji}</span>
-        <p className="mood-message">{card.mood.message}</p>
+// Header Component with Motivation
+const DashboardHeader = ({ userName, dayNumber, todayMood, motivationalQuote, onNavigate, activeTab }) => (
+  <div className="dashboard-header-fixed">
+    <div className="header-top">
+      <div className="greeting-section">
+        <h1 className="greeting-text">{getTimeOfDayGreeting()}, {userName}!</h1>
+        <p className="day-indicator">Día {dayNumber} de 21</p>
       </div>
-    )}
-    
-    <div className="swipe-hint">
-      <ChevronDown className="swipe-icon animate-bounce" />
-      <p>Desliza hacia abajo para ver tus tareas de hoy</p>
-    </div>
-  </div>
-);
-
-const ProgressCard = ({ card }) => (
-  <div className="card-content progress-card">
-    <div className="progress-header">
-      <h2><TrendingUp size={24} /> Tu Progreso</h2>
-      <span className="progress-percentage">{card.progress}%</span>
-    </div>
-    
-    <div className="progress-visual">
-      <div className="progress-bar-container">
-        <div className="progress-bar-fill" style={{ width: `${card.progress}%` }}></div>
-      </div>
-    </div>
-    
-    <div className="progress-stats">
-      <div className="stat-item">
-        <Calendar size={20} />
-        <span>Día {card.dayNumber}/{card.totalDays}</span>
-      </div>
-      {card.moodStreak > 0 && (
-        <div className="stat-item">
-          <Award size={20} />
-          <span>{card.moodStreak} días de racha</span>
+      {todayMood && (
+        <div className="mood-indicator-small">
+          <span className="mood-emoji-small">{todayMood.emoji}</span>
         </div>
       )}
     </div>
     
-    <div className="progress-message">
-      <Sparkles size={16} />
-      <p>¡Vas excelente! Sigue así 🚀</p>
+    <div className="motivation-banner">
+      <Sparkles size={16} className="sparkle-icon" />
+      <p className="motivation-text">{motivationalQuote}</p>
+      <Sparkles size={16} className="sparkle-icon" />
     </div>
   </div>
 );
 
+// Task Card Component
 const TaskCard = ({ card, onComplete }) => (
   <div className={`card-content task-card ${card.completed ? 'completed' : ''}`}>
     <div className="task-header">
@@ -278,6 +255,7 @@ const TaskCard = ({ card, onComplete }) => (
   </div>
 );
 
+// Tip Card Component
 const TipCard = ({ card }) => (
   <div className="card-content tip-card">
     <div className="tip-header">
@@ -291,70 +269,30 @@ const TipCard = ({ card }) => (
   </div>
 );
 
-const MotivationCard = ({ card }) => (
-  <div className="card-content motivation-card">
-    <div className="motivation-header">
-      <Star size={24} />
-      <h2>Tu motivación del día</h2>
-    </div>
-    <blockquote className="motivation-quote">
-      <p>"{card.quote.text}"</p>
-      <cite>- {card.quote.author}</cite>
-    </blockquote>
-    <div className="motivation-decoration">
-      <Heart size={48} className="motivation-icon" />
-    </div>
-  </div>
-);
-
-const CommunityCard = ({ card }) => (
-  <div className="card-content community-card">
-    <div className="community-header">
-      <Users size={24} />
-      <h2>Comunidad VisaQuest</h2>
-    </div>
-    <p className="community-message">¡No estás sola en este viaje!</p>
-    
-    <div className="community-stats">
-      <div className="community-stat">
-        <span className="stat-number">{card.activeUsers}</span>
-        <span className="stat-label">Viajeras activas</span>
-      </div>
-      <div className="community-stat">
-        <span className="stat-number">{card.approvedVisas}</span>
-        <span className="stat-label">Visas aprobadas este mes</span>
-      </div>
-    </div>
-    
-    <div className="community-decoration">
-      <Globe size={48} className="community-icon" />
-    </div>
-  </div>
-);
-
-const CompleteCard = ({ card }) => (
-  <div className="card-content complete-card">
-    <div className="complete-header">
-      <Award size={32} />
-      <h2>¡Día completado!</h2>
-    </div>
-    
-    <div className="complete-stats">
-      <p className="complete-message">
-        Has completado <strong>{card.completedToday}/{card.totalToday}</strong> tareas hoy
-      </p>
-    </div>
-    
-    {card.completedToday === card.totalToday && (
-      <div className="complete-celebration">
-        <p className="celebration-text">🎉 ¡Excelente trabajo! 🎉</p>
-        <p className="celebration-subtext">Descansa y nos vemos mañana</p>
-      </div>
-    )}
-    
-    <div className="complete-decoration">
-      <CheckCircle size={48} className="complete-icon" />
-    </div>
+// Navigation Tab Bar
+const TabBar = ({ activeTab, onTabChange }) => (
+  <div className="tab-bar">
+    <button 
+      className={`tab-item ${activeTab === 'home' ? 'active' : ''}`}
+      onClick={() => onTabChange('home')}
+    >
+      <Home size={20} />
+      <span>Tareas</span>
+    </button>
+    <button 
+      className={`tab-item ${activeTab === 'progress' ? 'active' : ''}`}
+      onClick={() => onTabChange('progress')}
+    >
+      <Trophy size={20} />
+      <span>Progreso</span>
+    </button>
+    <button 
+      className={`tab-item ${activeTab === 'profile' ? 'active' : ''}`}
+      onClick={() => onTabChange('profile')}
+    >
+      <User size={20} />
+      <span>Perfil</span>
+    </button>
   </div>
 );
 
@@ -369,6 +307,8 @@ const Dashboard = () => {
   const [progress, setProgress] = useState(0);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [cards, setCards] = useState([]);
+  const [motivationalQuote, setMotivationalQuote] = useState('');
+  const [activeTab, setActiveTab] = useState('home');
   
   // Touch handling
   const [touchStart, setTouchStart] = useState(0);
@@ -404,6 +344,9 @@ const Dashboard = () => {
     const completedCount = completed.length;
     setProgress(Math.round((completedCount / totalTasks) * 100));
 
+    // Set motivational quote
+    setMotivationalQuote(motivationalQuotes[dayNumber % motivationalQuotes.length]);
+
     // Get mood streak from Firebase
     if (!isGuest) {
       try {
@@ -426,9 +369,19 @@ const Dashboard = () => {
 
   useEffect(() => {
     // Generate cards when data is ready
-    const dailyCards = getDailyCards(dayNumber, userName, todayMood, progress, moodStreak, completedTasks);
+    const dailyCards = getDailyCards(dayNumber, completedTasks);
     setCards(dailyCards);
-  }, [dayNumber, userName, todayMood, progress, moodStreak, completedTasks]);
+  }, [dayNumber, completedTasks]);
+
+  // Rotate motivational quote every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+      setMotivationalQuote(randomQuote);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleTaskComplete = async (taskId) => {
     if (completedTasks.includes(taskId)) return;
@@ -455,6 +408,13 @@ const Dashboard = () => {
 
     // Track action
     analyticsService.trackAction(currentUser?.uid, 'task_completed', { taskId, dayNumber });
+
+    // Show celebration if all tasks for today are done
+    const todaysTasks = cards.filter(c => c.type === CARD_TYPES.TASK);
+    const completedToday = todaysTasks.filter(t => newCompleted.includes(t.id)).length;
+    if (completedToday === todaysTasks.length) {
+      // TODO: Show celebration animation
+    }
   };
 
   // Touch handlers for swipe
@@ -509,97 +469,116 @@ const Dashboard = () => {
   // Render card based on type
   const renderCard = (card) => {
     switch (card.type) {
-      case CARD_TYPES.WELCOME:
-        return <WelcomeCard card={card} />;
-      case CARD_TYPES.PROGRESS:
-        return <ProgressCard card={card} />;
       case CARD_TYPES.TASK:
         return <TaskCard card={card} onComplete={handleTaskComplete} />;
       case CARD_TYPES.TIP:
         return <TipCard card={card} />;
-      case CARD_TYPES.MOTIVATION:
-        return <MotivationCard card={card} />;
-      case CARD_TYPES.COMMUNITY:
-        return <CommunityCard card={card} />;
-      case CARD_TYPES.COMPLETE:
-        return <CompleteCard card={card} />;
       default:
         return null;
     }
   };
 
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    // TODO: Implement profile and progress views
+  };
+
   return (
-    <div 
-      className="dashboard-tiktok-container"
-      ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onWheel={handleWheel}
-    >
-      {/* Reset Button - Positioned at top left */}
-      <button 
-        className="reset-button"
-        onClick={handleResetJourney}
-        title="Reiniciar viaje"
+    <div className="dashboard-container-new">
+      {/* Fixed Header with Motivation */}
+      <DashboardHeader 
+        userName={userName}
+        dayNumber={dayNumber}
+        todayMood={todayMood}
+        motivationalQuote={motivationalQuote}
+        onNavigate={handleTabChange}
+        activeTab={activeTab}
+      />
+      
+      {/* Main Content Area */}
+      <div 
+        className="dashboard-content"
+        ref={containerRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onWheel={handleWheel}
       >
-        <RefreshCw size={20} />
-        <span>Reiniciar</span>
-      </button>
-      
-      {/* Card Stack */}
-      <div className="cards-wrapper">
-        {cards.map((card, index) => (
-          <div
-            key={card.id}
-            className={`card-container ${index === currentCardIndex ? 'active' : ''} ${
-              index < currentCardIndex ? 'passed' : ''
-            }`}
-            style={{
-              transform: `translateY(${(index - currentCardIndex) * 100}%)`,
-              opacity: Math.abs(index - currentCardIndex) > 1 ? 0 : 1,
-              pointerEvents: index === currentCardIndex ? 'auto' : 'none'
-            }}
-          >
-            <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-              {renderCard(card)}
+        {/* Reset Button */}
+        <button 
+          className="reset-button-new"
+          onClick={handleResetJourney}
+          title="Reiniciar viaje"
+        >
+          <RefreshCw size={16} />
+        </button>
+        
+        {/* Card Stack */}
+        <div className="cards-wrapper">
+          {cards.map((card, index) => (
+            <div
+              key={card.id}
+              className={`card-container ${index === currentCardIndex ? 'active' : ''} ${
+                index < currentCardIndex ? 'passed' : ''
+              }`}
+              style={{
+                transform: `translateY(${(index - currentCardIndex) * 100}%)`,
+                opacity: Math.abs(index - currentCardIndex) > 1 ? 0 : 1,
+                pointerEvents: index === currentCardIndex ? 'auto' : 'none'
+              }}
+            >
+              <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
+                {renderCard(card)}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        
+        {/* Card Counter */}
+        <div className="card-counter">
+          {currentCardIndex + 1} / {cards.length}
+        </div>
+        
+        {/* Navigation Hints */}
+        {currentCardIndex > 0 && (
+          <button 
+            className="nav-hint nav-hint-up"
+            onClick={() => setCurrentCardIndex(currentCardIndex - 1)}
+            aria-label="Previous card"
+          >
+            <ChevronUp size={24} />
+          </button>
+        )}
+        
+        {currentCardIndex < cards.length - 1 && (
+          <button 
+            className="nav-hint nav-hint-down"
+            onClick={() => setCurrentCardIndex(currentCardIndex + 1)}
+            aria-label="Next card"
+          >
+            <ChevronDown size={24} />
+          </button>
+        )}
+        
+        {/* Progress Dots */}
+        <div className="progress-dots">
+          {cards.map((card, index) => (
+            <div
+              key={index}
+              className={`progress-dot ${
+                index === currentCardIndex ? 'active' : ''
+              } ${
+                card.type === CARD_TYPES.TASK && card.completed ? 'completed' : ''
+              }`}
+              onClick={() => setCurrentCardIndex(index)}
+            />
+          ))}
+        </div>
       </div>
       
-      {/* Navigation Dots */}
-      <div className="navigation-dots">
-        {cards.map((_, index) => (
-          <button
-            key={index}
-            className={`dot ${index === currentCardIndex ? 'active' : ''}`}
-            onClick={() => setCurrentCardIndex(index)}
-            aria-label={`Go to card ${index + 1}`}
-          />
-        ))}
-      </div>
-      
-      {/* Navigation Hints */}
-      {currentCardIndex > 0 && (
-        <button 
-          className="nav-hint nav-hint-up"
-          onClick={() => setCurrentCardIndex(currentCardIndex - 1)}
-          aria-label="Previous card"
-        >
-          <ChevronUp size={24} />
-        </button>
-      )}
-      
-      {currentCardIndex < cards.length - 1 && (
-        <button 
-          className="nav-hint nav-hint-down"
-          onClick={() => setCurrentCardIndex(currentCardIndex + 1)}
-          aria-label="Next card"
-        >
-          <ChevronDown size={24} />
-        </button>
-      )}
+      {/* Bottom Tab Bar */}
+      <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
     </div>
   );
 };
