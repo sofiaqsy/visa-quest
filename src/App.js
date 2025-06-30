@@ -27,57 +27,118 @@ const WelcomeScreen = ({ onStart }) => {
       setIsLoaded(true);
       
       try {
-        // Check if user already has a name saved
-        const savedName = localStorage.getItem('visa-quest-user-name');
-        const hasSeenWelcome = localStorage.getItem('visa-quest-has-seen-welcome');
+        // Track visit
+        await analyticsService.trackAction(currentUser?.uid, 'welcome_screen_view');
+        
+        // First, try to get data from Firebase
+        let firebaseUserName = null;
+        let firebaseTodayMood = null;
+        let hasSeenWelcome = localStorage.getItem('visa-quest-has-seen-welcome');
+        
+        if (currentUser?.uid) {
+          // Authenticated user - check Firebase first
+          try {
+            // Get user profile from Firebase
+            const userProfile = await userService.getUserProfile(currentUser.uid);
+            if (userProfile?.displayName || userProfile?.userName) {
+              firebaseUserName = userProfile.displayName || userProfile.userName;
+              setUserName(firebaseUserName);
+              // Also save to localStorage as backup
+              localStorage.setItem('visa-quest-user-name', firebaseUserName);
+            }
+            
+            // Check if today's mood exists in Firebase
+            firebaseTodayMood = await moodService.getTodayMood(currentUser.uid);
+          } catch (error) {
+            console.warn('Error fetching Firebase data:', error);
+          }
+        } else {
+          // Guest user - check device profile
+          try {
+            const deviceId = localStorage.getItem('visa-quest-device-id');
+            if (deviceId) {
+              // Try to get today's mood from Firebase using device ID
+              firebaseTodayMood = await moodService.getTodayMood(null);
+            }
+          } catch (error) {
+            console.warn('Error fetching device data:', error);
+          }
+        }
+        
+        // If we have Firebase data, use it
+        if (firebaseTodayMood) {
+          const moodData = {
+            mood: firebaseTodayMood.mood,
+            date: firebaseTodayMood.date,
+            message: firebaseTodayMood.message || '',
+            emoji: firebaseTodayMood.emoji || '',
+            label: firebaseTodayMood.label || ''
+          };
+          setSelectedMood(moodData);
+          // Save to localStorage as backup
+          localStorage.setItem('visa-quest-daily-mood', JSON.stringify(moodData));
+          
+          if (hasSeenWelcome && firebaseUserName) {
+            // User has seen welcome before and we have all data - go to dashboard
+            await handleStart();
+            return;
+          } else if (firebaseUserName) {
+            // Have name and mood but haven't seen welcome
+            setCurrentStep('ready');
+            return;
+          }
+        }
+        
+        // Fallback to localStorage if no Firebase data
+        const savedName = firebaseUserName || localStorage.getItem('visa-quest-user-name');
         
         if (savedName) {
           setUserName(savedName);
           
-          // Check if we already have today's mood
-          const savedMood = localStorage.getItem('visa-quest-daily-mood');
-          if (savedMood) {
-            try {
-              const parsed = JSON.parse(savedMood);
-              const today = new Date().toDateString();
-              
-              if (parsed.date === today) {
-                // Already have today's mood, skip to ready or dashboard
-                if (hasSeenWelcome) {
-                  // Go directly to dashboard
-                  await handleStart();
-                  return;
-                } else {
-                  // Show ready screen once
+          // Check localStorage for mood if we didn't get it from Firebase
+          if (!firebaseTodayMood) {
+            const savedMood = localStorage.getItem('visa-quest-daily-mood');
+            if (savedMood) {
+              try {
+                const parsed = JSON.parse(savedMood);
+                const today = new Date().toDateString();
+                
+                if (parsed.date === today) {
                   setSelectedMood(parsed);
-                  setCurrentStep('ready');
-                  return;
+                  
+                  if (hasSeenWelcome) {
+                    await handleStart();
+                    return;
+                  } else {
+                    setCurrentStep('ready');
+                    return;
+                  }
                 }
+              } catch (e) {
+                console.error('Error parsing saved mood:', e);
               }
-            } catch (e) {
-              console.error('Error parsing saved mood:', e);
             }
           }
           
           // Have name but need today's mood
           setCurrentStep('mood');
         } else if (currentUser?.displayName) {
-          // Use display name from auth
+          // Use display name from auth if available
           setUserName(currentUser.displayName);
           localStorage.setItem('visa-quest-user-name', currentUser.displayName);
+          // Save to Firebase
+          await userService.saveUserProfile(currentUser.uid, {
+            displayName: currentUser.displayName,
+            userName: currentUser.displayName
+          });
           setCurrentStep('mood');
         } else {
           // First time user
           setCurrentStep('greeting');
         }
         
-        // Try to track visit and update device activity, but don't fail if it doesn't work
-        try {
-          await analyticsService.trackAction(currentUser?.uid, 'welcome_screen_view');
-          await userService.updateDeviceActivity();
-        } catch (error) {
-          console.warn('Analytics/tracking error (non-critical):', error);
-        }
+        // Update device activity
+        await userService.updateDeviceActivity();
       } catch (error) {
         console.error('Error initializing welcome:', error);
         // On error, show greeting
@@ -126,11 +187,19 @@ const WelcomeScreen = ({ onStart }) => {
   const handleNameSubmit = async (e) => {
     e.preventDefault();
     if (userName.trim()) {
+      // Save to localStorage first (immediate feedback)
       localStorage.setItem('visa-quest-user-name', userName.trim());
       
-      // Try to save to Firebase, but don't fail if it doesn't work
+      // Save to Firebase
       try {
-        if (!currentUser) {
+        if (currentUser?.uid) {
+          // Authenticated user
+          await userService.saveUserProfile(currentUser.uid, {
+            displayName: userName.trim(),
+            userName: userName.trim()
+          });
+        } else {
+          // Guest user - create device profile
           await userService.createDeviceProfile({
             userName: userName.trim(),
             firstSeen: new Date().toISOString()
@@ -150,7 +219,7 @@ const WelcomeScreen = ({ onStart }) => {
   const handleMoodSelect = async (mood) => {
     setSelectedMood(mood);
     
-    // Save locally
+    // Save locally first (immediate feedback)
     const moodData = {
       mood: mood.value,
       date: new Date().toDateString(),
@@ -161,7 +230,7 @@ const WelcomeScreen = ({ onStart }) => {
     
     localStorage.setItem('visa-quest-daily-mood', JSON.stringify(moodData));
     
-    // Try to save to Firebase, but don't fail if it doesn't work
+    // Save to Firebase
     try {
       await moodService.saveDailyMood(currentUser?.uid, {
         mood: mood.value,
@@ -185,6 +254,18 @@ const WelcomeScreen = ({ onStart }) => {
     // Mark that user has seen welcome
     localStorage.setItem('visa-quest-has-seen-welcome', 'true');
     
+    // Save to Firebase if authenticated
+    if (currentUser?.uid) {
+      try {
+        await userService.saveUserProfile(currentUser.uid, {
+          hasSeenWelcome: true,
+          lastLogin: new Date().toISOString()
+        });
+      } catch (error) {
+        console.warn('Error updating user profile (non-critical):', error);
+      }
+    }
+    
     // If no user is logged in, continue as guest
     if (!currentUser) {
       try {
@@ -194,7 +275,7 @@ const WelcomeScreen = ({ onStart }) => {
       }
     }
     
-    // Try to track action
+    // Track action
     try {
       analyticsService.trackAction(currentUser?.uid, 'journey_started');
     } catch (error) {
@@ -444,10 +525,25 @@ function App() {
 
   const AppContent = () => {
     const [needsMoodCheck, setNeedsMoodCheck] = useState(false);
+    const { currentUser } = useAuth();
 
     useEffect(() => {
       // Check if we need mood check
-      const checkMood = () => {
+      const checkMood = async () => {
+        // First check Firebase if user is authenticated
+        if (currentUser?.uid) {
+          try {
+            const todayMood = await moodService.getTodayMood(currentUser.uid);
+            if (!todayMood && localStorage.getItem('visa-quest-has-seen-welcome')) {
+              setNeedsMoodCheck(true);
+              return;
+            }
+          } catch (error) {
+            console.warn('Error checking Firebase mood:', error);
+          }
+        }
+        
+        // Fallback to localStorage check
         const savedMood = localStorage.getItem('visa-quest-daily-mood');
         if (savedMood) {
           try {
@@ -464,7 +560,7 @@ function App() {
       };
       
       checkMood();
-    }, []);
+    }, [currentUser]);
 
     // If needs mood check, redirect to welcome
     if (needsMoodCheck) {
