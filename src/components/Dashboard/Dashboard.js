@@ -10,7 +10,6 @@ import {
   GOAL_CATEGORIES,
   WORK_TASKS,
   PERSONAL_TASKS,
-  getTasksByDay as getVisaTasks,
   DEFAULT_USER_PREFERENCES
 } from '../../data/goals';
 import './Dashboard.css';
