@@ -223,7 +223,7 @@ const DashboardHeader = ({ motivationalQuote }) => (
 );
 
 // Task Card Component
-const TaskCard = ({ card, onComplete, cardNumber, totalCards }) => (
+const TaskCard = ({ card, onComplete }) => (
   <div className={`card-content task-card ${card.completed ? 'completed' : ''}`}>
     <div className="task-header">
       <span className="task-icon">{card.icon}</span>
@@ -261,16 +261,11 @@ const TaskCard = ({ card, onComplete, cardNumber, totalCards }) => (
         </>
       )}
     </button>
-    
-    {/* Card Counter at bottom */}
-    <div className="card-counter-inline">
-      {cardNumber} / {totalCards}
-    </div>
   </div>
 );
 
 // Tip Card Component
-const TipCard = ({ card, cardNumber, totalCards }) => (
+const TipCard = ({ card }) => (
   <div className="card-content tip-card">
     <div className="tip-header">
       <Sparkles size={24} />
@@ -279,11 +274,6 @@ const TipCard = ({ card, cardNumber, totalCards }) => (
     <p className="tip-content">{card.content}</p>
     <div className="tip-decoration">
       <BookOpen size={48} className="tip-icon" />
-    </div>
-    
-    {/* Card Counter at bottom */}
-    <div className="card-counter-inline">
-      {cardNumber} / {totalCards}
     </div>
   </div>
 );
@@ -322,10 +312,15 @@ const Dashboard = () => {
   const [todayMood, setTodayMood] = useState(null);
   const [completedTasks, setCompletedTasks] = useState([]);
   const [dayNumber, setDayNumber] = useState(1);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [cards, setCards] = useState([]);
   const [motivationalQuote, setMotivationalQuote] = useState('');
   const [activeTab, setActiveTab] = useState('home');
-  const scrollContainerRef = useRef(null);
+  
+  // Touch handling
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  const containerRef = useRef(null);
 
   const initializeDashboard = useCallback(async () => {
     // Get today's mood
@@ -401,18 +396,49 @@ const Dashboard = () => {
       });
     }
 
-    // Calculate progress for tracking (but not displayed in this tab)
+    // Calculate progress for tracking
     const totalTasks = 21 * 3;
     const progress = Math.round((newCompleted.length / totalTasks) * 100);
 
     // Track action
     analyticsService.trackAction(currentUser?.uid, 'task_completed', { taskId, dayNumber, progress });
+  };
 
-    // Show celebration if all tasks for today are done
-    const todaysTasks = cards.filter(c => c.type === CARD_TYPES.TASK);
-    const completedToday = todaysTasks.filter(t => newCompleted.includes(t.id)).length;
-    if (completedToday === todaysTasks.length) {
-      // TODO: Show celebration animation
+  // Touch handlers for swipe
+  const handleTouchStart = (e) => {
+    setTouchStart(e.touches[0].clientY);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.touches[0].clientY);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isSwipeUp = distance > 50;
+    const isSwipeDown = distance < -50;
+    
+    if (isSwipeUp) {
+      // Swipe up - next card with infinite loop
+      setCurrentCardIndex((prev) => (prev + 1) % cards.length);
+    }
+    
+    if (isSwipeDown) {
+      // Swipe down - previous card with infinite loop
+      setCurrentCardIndex((prev) => (prev - 1 + cards.length) % cards.length);
+    }
+  };
+
+  // Mouse wheel handler
+  const handleWheel = (e) => {
+    if (e.deltaY > 0) {
+      // Scroll down - next card with infinite loop
+      setCurrentCardIndex((prev) => (prev + 1) % cards.length);
+    } else if (e.deltaY < 0) {
+      // Scroll up - previous card with infinite loop
+      setCurrentCardIndex((prev) => (prev - 1 + cards.length) % cards.length);
     }
   };
 
@@ -432,18 +458,12 @@ const Dashboard = () => {
   };
 
   // Render card based on type
-  const renderCard = (card, index) => {
-    const props = {
-      card,
-      cardNumber: index + 1,
-      totalCards: cards.length
-    };
-    
+  const renderCard = (card) => {
     switch (card.type) {
       case CARD_TYPES.TASK:
-        return <TaskCard {...props} onComplete={handleTaskComplete} />;
+        return <TaskCard card={card} onComplete={handleTaskComplete} />;
       case CARD_TYPES.TIP:
-        return <TipCard {...props} />;
+        return <TipCard card={card} />;
       default:
         return null;
     }
@@ -456,19 +476,18 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="dashboard-container-minimal">
+    <div className="dashboard-tiktok-container">
       {/* Fixed Header with Motivation */}
-      <DashboardHeader 
-        userName={userName}
-        dayNumber={dayNumber}
-        todayMood={todayMood}
-        motivationalQuote={motivationalQuote}
-      />
+      <DashboardHeader motivationalQuote={motivationalQuote} />
       
-      {/* Main Content Area with Infinite Scroll */}
+      {/* Main Content Area */}
       <div 
-        className="dashboard-scroll-container"
-        ref={scrollContainerRef}
+        className="dashboard-content"
+        ref={containerRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onWheel={handleWheel}
       >
         {/* Reset Button */}
         <button 
@@ -479,15 +498,22 @@ const Dashboard = () => {
           <RefreshCw size={16} />
         </button>
         
-        {/* Card List */}
-        <div className="cards-list">
+        {/* Card Stack */}
+        <div className="cards-wrapper">
           {cards.map((card, index) => (
             <div
               key={card.id}
-              className="card-wrapper"
+              className={`card-container ${index === currentCardIndex ? 'active' : ''} ${
+                index < currentCardIndex ? 'passed' : ''
+              }`}
+              style={{
+                transform: `translateY(${(index - currentCardIndex) * 100}%)`,
+                opacity: Math.abs(index - currentCardIndex) > 1 ? 0 : 1,
+                pointerEvents: index === currentCardIndex ? 'auto' : 'none'
+              }}
             >
               <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-                {renderCard(card, index)}
+                {renderCard(card)}
               </div>
             </div>
           ))}
