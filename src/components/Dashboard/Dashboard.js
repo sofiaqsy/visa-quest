@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { moodService, progressService, analyticsService } from '../../firebase/services';
 import { CheckCircle, Circle, Calendar, Target, Heart, TrendingUp, Clock, Award } from 'lucide-react';
@@ -43,11 +43,7 @@ const Dashboard = () => {
   const [dailyQuote, setDailyQuote] = useState(null);
   const [progress, setProgress] = useState(0);
 
-  useEffect(() => {
-    initializeDashboard();
-  }, [currentUser]);
-
-  const initializeDashboard = async () => {
+  const initializeDashboard = useCallback(async () => {
     // Get today's mood
     const savedMood = localStorage.getItem('visa-quest-daily-mood');
     if (savedMood) {
@@ -94,7 +90,11 @@ const Dashboard = () => {
 
     // Track dashboard view
     analyticsService.trackAction(currentUser?.uid, 'dashboard_view', { dayNumber });
-  };
+  }, [currentUser, isGuest, dayNumber]);
+
+  useEffect(() => {
+    initializeDashboard();
+  }, [initializeDashboard]);
 
   const handleTaskComplete = async (taskId) => {
     const task = dailyTasks.find(t => t.id === taskId);
