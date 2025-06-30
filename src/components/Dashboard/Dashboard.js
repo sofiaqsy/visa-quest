@@ -798,6 +798,7 @@ const Dashboard = () => {
   const [userName, setUserName] = useState('');
   const [activeGoals, setActiveGoals] = useState([]);
   const [userPreferences, setUserPreferences] = useState(DEFAULT_USER_PREFERENCES);
+  const [isChangingTab, setIsChangingTab] = useState(false);
   
   // Enhanced touch handling with velocity tracking
   const [touchStart, setTouchStart] = useState(0);
@@ -1137,40 +1138,62 @@ const Dashboard = () => {
     }
   };
 
-  // Handle tab change - FIXED to reset card state
+  // Handle tab change - FIXED to prevent black screen
   const handleTabChange = (tab) => {
     console.log('Changing tab to:', tab);
+    
+    // Prevent multiple rapid tab changes
+    if (isChangingTab) return;
+    
+    setIsChangingTab(true);
     setActiveTab(tab);
     
     // Reset card navigation state when returning to home
     if (tab === 'home') {
+      // Reset states immediately
       setCurrentCardIndex(0);
       setDragOffset(0);
       setIsTransitioning(false);
+      setIsDragging(false);
+      setTouchStart(0);
+      setTouchEnd(0);
       
-      // Force re-render of cards with proper positioning
-      setTimeout(() => {
+      // Use requestAnimationFrame for smoother reset
+      requestAnimationFrame(() => {
         if (containerRef.current) {
           const cardElements = containerRef.current.querySelectorAll('.card-container');
-          cardElements.forEach((card, index) => {
+          
+          // First, disable transitions
+          cardElements.forEach(card => {
             card.style.transition = 'none';
-            if (index === 0) {
-              card.style.transform = 'translateY(0) scale(1)';
-              card.style.opacity = '1';
-            } else {
-              card.style.transform = 'translateY(100%) scale(0.95)';
-              card.style.opacity = '0';
-            }
           });
           
-          // Re-enable transitions after positioning
-          setTimeout(() => {
-            cardElements.forEach(card => {
-              card.style.transition = '';
+          // Then reset positions
+          requestAnimationFrame(() => {
+            cardElements.forEach((card, index) => {
+              if (index === 0) {
+                card.style.transform = 'translateY(0) scale(1)';
+                card.style.opacity = '1';
+              } else {
+                card.style.transform = 'translateY(100%) scale(0.95)';
+                card.style.opacity = '0';
+              }
             });
-          }, 50);
+            
+            // Re-enable transitions after a small delay
+            requestAnimationFrame(() => {
+              cardElements.forEach(card => {
+                card.style.transition = '';
+              });
+              setIsChangingTab(false);
+            });
+          });
+        } else {
+          setIsChangingTab(false);
         }
-      }, 0);
+      });
+    } else {
+      setIsChangingTab(false);
     }
     
     // Track tab change
@@ -1284,7 +1307,7 @@ const Dashboard = () => {
                       transform: `translateY(${getCardTransform(index)}%)`,
                       opacity: isVisible ? (isActive ? 1 : (isNext || isPrev ? 0.8 : 0)) : 0,
                       pointerEvents: isActive ? 'auto' : 'none',
-                      transition: isDragging ? 'none' : undefined,
+                      transition: isDragging || isChangingTab ? 'none' : undefined,
                       zIndex: isActive ? 10 : (isNext ? 5 : 1)
                     }}
                   >
