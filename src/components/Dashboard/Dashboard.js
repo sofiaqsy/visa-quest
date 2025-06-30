@@ -303,8 +303,6 @@ const Dashboard = () => {
   const [todayMood, setTodayMood] = useState(null);
   const [completedTasks, setCompletedTasks] = useState([]);
   const [dayNumber, setDayNumber] = useState(1);
-  const [moodStreak, setMoodStreak] = useState(0);
-  const [progress, setProgress] = useState(0);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [cards, setCards] = useState([]);
   const [motivationalQuote, setMotivationalQuote] = useState('');
@@ -339,29 +337,12 @@ const Dashboard = () => {
     const completed = JSON.parse(localStorage.getItem('visa-quest-completed-tasks') || '[]');
     setCompletedTasks(completed);
 
-    // Calculate progress
-    const totalTasks = 21 * 3; // 21 days * 3 tasks per day
-    const completedCount = completed.length;
-    setProgress(Math.round((completedCount / totalTasks) * 100));
-
     // Set motivational quote
     setMotivationalQuote(motivationalQuotes[dayNumber % motivationalQuotes.length]);
 
-    // Get mood streak from Firebase
-    if (!isGuest) {
-      try {
-        const stats = await moodService.getMoodStats(currentUser?.uid);
-        if (stats) {
-          setMoodStreak(stats.currentStreak);
-        }
-      } catch (error) {
-        console.warn('Error getting mood stats:', error);
-      }
-    }
-
     // Track dashboard view
     analyticsService.trackAction(currentUser?.uid, 'dashboard_view', { dayNumber });
-  }, [currentUser, isGuest, dayNumber]);
+  }, [currentUser, dayNumber]);
 
   useEffect(() => {
     initializeDashboard();
@@ -402,12 +383,12 @@ const Dashboard = () => {
       });
     }
 
-    // Update progress
+    // Calculate progress for tracking (but not displayed in this tab)
     const totalTasks = 21 * 3;
-    setProgress(Math.round((newCompleted.length / totalTasks) * 100));
+    const progress = Math.round((newCompleted.length / totalTasks) * 100);
 
     // Track action
-    analyticsService.trackAction(currentUser?.uid, 'task_completed', { taskId, dayNumber });
+    analyticsService.trackAction(currentUser?.uid, 'task_completed', { taskId, dayNumber, progress });
 
     // Show celebration if all tasks for today are done
     const todaysTasks = cards.filter(c => c.type === CARD_TYPES.TASK);
