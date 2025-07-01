@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginForm from './components/Auth/LoginForm';
-import Dashboard from './components/Dashboard/Dashboard';
+// Import SimpleDashboard instead of the complex Dashboard
+import SimpleDashboard from './components/Dashboard/SimpleDashboard';
 import { registerSW, requestNotificationPermission } from './hooks/usePWA';
 import PWAInstallButton, { OfflineIndicator, InstallPrompt } from './components/PWAInstallButton';
 import { moodService, userService, analyticsService } from './firebase/services';
@@ -303,7 +304,7 @@ const WelcomeScreen = ({ onStart }) => {
                 ¡Hola! Soy tu compañera en esta aventura
               </h1>
               <p className="text-lg text-gray-600 mb-8">
-                Juntas vamos a conseguir tu visa a Canadá de manera organizada y sin estrés
+                Juntas vamos a organizar tus metas de manera simple y sin estrés
               </p>
             </div>
 
@@ -337,7 +338,6 @@ const WelcomeScreen = ({ onStart }) => {
             {/* Gentle info about the journey */}
             <div className={`text-sm text-gray-500 ${isLoaded ? 'slide-up' : 'opacity-0'}`} 
                  style={{ animationDelay: '0.6s' }}>
-              <p>🗓️ Te acompañaré durante 21 días</p>
               <p>📱 Funciona sin internet</p>
               <p>🤗 Siempre a tu ritmo</p>
               <p className="mt-4 text-xs">
@@ -373,7 +373,7 @@ const WelcomeScreen = ({ onStart }) => {
             {/* Mood selection */}
             <div className="bg-white rounded-2xl p-6 shadow-lg slide-up" style={{ animationDelay: '0.3s' }}>
               <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">
-                ¿Cómo te sientes hoy con el tema de tu visa?
+                ¿Cómo te sientes hoy con tus proyectos?
               </h3>
               
               <div className="space-y-3">
@@ -419,7 +419,7 @@ const WelcomeScreen = ({ onStart }) => {
             
             {/* Personalized encouragement */}
             <div className="text-center mb-8 slide-up">
-              <div className="text-6xl mb-4">🇨🇦</div>
+              <div className="text-6xl mb-4">🎯</div>
               <h2 className="text-3xl font-bold text-gray-800 mb-4">
                 ¡Perfecto, {userName}!
               </h2>
@@ -432,31 +432,31 @@ const WelcomeScreen = ({ onStart }) => {
             {!localStorage.getItem('visa-quest-has-seen-welcome') && (
               <div className="bg-white rounded-2xl p-6 shadow-lg mb-6 slide-up" style={{ animationDelay: '0.3s' }}>
                 <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">
-                  Tu plan personalizado de 21 días
+                  Tu espacio personalizado incluye:
                 </h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-4 p-3 bg-green-50 rounded-xl">
-                    <span className="text-2xl">📋</span>
-                    <div>
-                      <div className="font-semibold text-green-800">Semana 1: Organización</div>
-                      <div className="text-sm text-green-600">Documentos y preparación básica</div>
-                    </div>
-                  </div>
-                  
                   <div className="flex items-center space-x-4 p-3 bg-blue-50 rounded-xl">
-                    <span className="text-2xl">✈️</span>
+                    <span className="text-2xl">💼</span>
                     <div>
-                      <div className="font-semibold text-blue-800">Semana 2: Planificación</div>
-                      <div className="text-sm text-blue-600">Itinerario y reservas</div>
+                      <div className="font-semibold text-blue-800">Área de Trabajo</div>
+                      <div className="text-sm text-blue-600">Proyectos y tareas profesionales</div>
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-4 p-3 bg-purple-50 rounded-xl">
-                    <span className="text-2xl">🚀</span>
+                    <span className="text-2xl">💜</span>
                     <div>
-                      <div className="font-semibold text-purple-800">Semana 3: Aplicación</div>
-                      <div className="text-sm text-purple-600">Envío y seguimiento</div>
+                      <div className="font-semibold text-purple-800">Área Personal</div>
+                      <div className="text-sm text-purple-600">Metas personales y rutinas</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4 p-3 bg-green-50 rounded-xl">
+                    <span className="text-2xl">⚡</span>
+                    <div>
+                      <div className="font-semibold text-green-800">Simple y Configurable</div>
+                      <div className="text-sm text-green-600">Todo en una sola pantalla</div>
                     </div>
                   </div>
                 </div>
@@ -568,7 +568,7 @@ function App() {
           
           <Route path="/dashboard" element={
             <ProtectedRoute>
-              <Dashboard />
+              <SimpleDashboard />
             </ProtectedRoute>
           } />
           
