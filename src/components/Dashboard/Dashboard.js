@@ -617,7 +617,7 @@ const ProgressView = ({ completedTasks, activeGoals, userName, onGoalsUpdate }) 
   }
   
   return (
-    <div className="progress-view" style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #1a1a1a, #000)', color: 'white' }}>
+    <div className="progress-view" style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #1a1a1a, #000)', color: 'white', overflow: 'auto' }}>
       {/* Header */}
       <div className="progress-header">
         <h1 className="progress-title" style={{ color: 'white' }}>Tu Progreso Global</h1>
@@ -800,6 +800,7 @@ const Dashboard = () => {
   const [userPreferences, setUserPreferences] = useState(DEFAULT_USER_PREFERENCES);
   const [isChangingTab, setIsChangingTab] = useState(false);
   const [savedCardIndex, setSavedCardIndex] = useState(0); // Store card position when leaving home tab
+  const [wheelListenerActive, setWheelListenerActive] = useState(false);
   
   // Enhanced touch handling with velocity tracking
   const [touchStart, setTouchStart] = useState(0);
@@ -999,7 +1000,7 @@ const Dashboard = () => {
 
   // Enhanced card navigation with smooth animations
   const navigateToCard = useCallback((newIndex, velocity = 0) => {
-    if (isTransitioning || cards.length === 0) return;
+    if (isTransitioning || cards.length === 0 || activeTab !== 'home') return;
     
     // Handle infinite scroll without jumps
     let targetIndex = newIndex;
@@ -1033,7 +1034,7 @@ const Dashboard = () => {
     setTimeout(() => {
       setIsTransitioning(false);
     }, transitionDuration);
-  }, [cards.length, isTransitioning]);
+  }, [cards.length, isTransitioning, activeTab]);
 
   // Enhanced touch handlers with velocity tracking
   const handleTouchStart = (e) => {
@@ -1095,12 +1096,16 @@ const Dashboard = () => {
     velocityRef.current = 0;
   };
 
-  // Mouse wheel handler with momentum - Fixed to only work on home tab
+  // Mouse wheel handler with strict tab checking
   const handleWheel = useCallback((e) => {
-    // Only handle wheel events in home tab
-    if (activeTab !== 'home' || cards.length === 0 || isTransitioning) return;
+    // Absolutely ensure we're in home tab
+    if (activeTab !== 'home' || !wheelListenerActive) {
+      return;
+    }
     
-    // Only prevent default and navigate if we're in the home tab
+    if (cards.length === 0 || isTransitioning) return;
+    
+    // Only handle wheel events when we're sure we're in home tab
     e.preventDefault();
     e.stopPropagation();
     
@@ -1111,7 +1116,7 @@ const Dashboard = () => {
     } else if (e.deltaY < 0) {
       navigateToCard(currentCardIndex - 1, velocity);
     }
-  }, [activeTab, cards.length, isTransitioning, currentCardIndex, navigateToCard]);
+  }, [activeTab, cards.length, isTransitioning, currentCardIndex, navigateToCard, wheelListenerActive]);
 
   // Reset journey handler
   const handleResetJourney = () => {
@@ -1142,7 +1147,7 @@ const Dashboard = () => {
     }
   };
 
-  // Handle tab change - Modified to keep card position
+  // Handle tab change - Modified to keep card position and control wheel listener
   const handleTabChange = (tab) => {
     console.log('Changing tab to:', tab);
     
@@ -1154,12 +1159,15 @@ const Dashboard = () => {
     // Save current card index when leaving home tab
     if (activeTab === 'home' && tab !== 'home') {
       setSavedCardIndex(currentCardIndex);
+      setWheelListenerActive(false); // Disable wheel listener
     }
     
     setActiveTab(tab);
     
     // Restore card position when returning to home
     if (tab === 'home') {
+      setWheelListenerActive(true); // Enable wheel listener
+      
       // Reset states immediately
       setDragOffset(0);
       setIsTransitioning(false);
@@ -1235,12 +1243,21 @@ const Dashboard = () => {
     return baseTransform + dragTransform;
   };
 
-  // Add event listener only for the content area
+  // Set initial wheel listener state
+  useEffect(() => {
+    setWheelListenerActive(activeTab === 'home');
+  }, [activeTab]);
+
+  // Add event listener only for the content area with strict checking
   useEffect(() => {
     const contentElement = containerRef.current;
     
-    if (contentElement && activeTab === 'home') {
-      const wheelHandler = (e) => handleWheel(e);
+    if (contentElement && activeTab === 'home' && wheelListenerActive) {
+      const wheelHandler = (e) => {
+        if (activeTab === 'home' && wheelListenerActive) {
+          handleWheel(e);
+        }
+      };
       
       // Add passive: false to allow preventDefault
       contentElement.addEventListener('wheel', wheelHandler, { passive: false });
@@ -1249,7 +1266,7 @@ const Dashboard = () => {
         contentElement.removeEventListener('wheel', wheelHandler);
       };
     }
-  }, [handleWheel, activeTab]);
+  }, [handleWheel, activeTab, wheelListenerActive]);
 
   return (
     <div className="dashboard-tiktok-container">
@@ -1263,7 +1280,10 @@ const Dashboard = () => {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        // Remove onWheel from here - we'll use addEventListener instead
+        style={{ 
+          overflow: activeTab === 'home' ? 'hidden' : 'auto',
+          touchAction: activeTab === 'home' ? 'none' : 'auto'
+        }}
       >
         {/* Reset Button - Only show on home tab */}
         {activeTab === 'home' && (
