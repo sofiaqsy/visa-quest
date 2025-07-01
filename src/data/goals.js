@@ -110,6 +110,44 @@ export const getContextualGreeting = () => {
 // Sample work tasks
 export const WORK_TASKS = [
   {
+    id: 'work_time_report_morning',
+    category: GOAL_CATEGORIES.WORK,
+    icon: '⏰',
+    title: "Time Report - Inicio del día",
+    description: "Registrar hora de entrada y planificar actividades del día",
+    time: "5 min",
+    color: 'from-teal-500 to-teal-700',
+    preferredTime: ['MORNING'],
+    priority: PRIORITY_LEVELS.HIGH,
+    recurring: true,
+    dailyReset: true,
+    tips: [
+      'Registra tu hora exacta de entrada',
+      'Lista tus prioridades del día',
+      'Estima tiempos para cada tarea',
+      'Configura recordatorios importantes'
+    ]
+  },
+  {
+    id: 'work_time_report_evening',
+    category: GOAL_CATEGORIES.WORK,
+    icon: '📊',
+    title: "Time Report - Cierre del día",
+    description: "Registrar hora de salida y resumir actividades completadas",
+    time: "10 min",
+    color: 'from-orange-500 to-orange-700',
+    preferredTime: ['AFTERNOON', 'EVENING'],
+    priority: PRIORITY_LEVELS.HIGH,
+    recurring: true,
+    dailyReset: true,
+    tips: [
+      'Registra tu hora de salida',
+      'Documenta tareas completadas',
+      'Anota tiempo real vs estimado',
+      'Identifica bloqueos o pendientes'
+    ]
+  },
+  {
     id: 'work_daily_standup',
     category: GOAL_CATEGORIES.WORK,
     icon: '👥',
@@ -169,6 +207,25 @@ export const WORK_TASKS = [
     preferredTime: ['AFTERNOON', 'EVENING'],
     priority: PRIORITY_LEVELS.LOW,
     tips: ['Usa ejemplos claros', 'Incluye diagramas', 'Piensa en el próximo dev']
+  },
+  {
+    id: 'work_weekly_time_summary',
+    category: GOAL_CATEGORIES.WORK,
+    icon: '📈',
+    title: "Resumen semanal de horas",
+    description: "Consolidar y revisar el time report de la semana",
+    time: "20 min",
+    color: 'from-indigo-500 to-indigo-700',
+    preferredTime: ['AFTERNOON'],
+    priority: PRIORITY_LEVELS.MEDIUM,
+    weeklyTask: true,
+    dayOfWeek: 5, // Friday
+    tips: [
+      'Suma total de horas trabajadas',
+      'Identifica patrones de productividad',
+      'Compara estimados vs reales',
+      'Prepara reporte para el manager'
+    ]
   }
 ];
 
@@ -590,6 +647,22 @@ export const MICRO_TASKS = [
     color: 'from-red-400 to-red-600',
     microTask: true,
     tips: ['Usa lenguaje corporal', 'Ambiente refleja emoción', 'Acciones revelan sentimientos']
+  },
+  // Work Micro Tasks
+  {
+    id: 'micro_time_check',
+    category: GOAL_CATEGORIES.WORK,
+    icon: '⏱️',
+    title: "Check de tiempo",
+    description: "Registra en qué has invertido la última hora",
+    time: "2 min",
+    color: 'from-blue-400 to-blue-600',
+    microTask: true,
+    tips: [
+      'Sé honesto con el tiempo real',
+      'Identifica distracciones',
+      'Ajusta plan si es necesario'
+    ]
   }
 ];
 
@@ -671,6 +744,7 @@ export const getContextualTips = (category, timeContext) => {
 export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferences = {}) => {
   const timeContext = getCurrentTimeContext();
   const isWorkTime = isWorkHours();
+  const currentDay = new Date().getDay();
   
   let eligibleTasks = [];
   
@@ -692,8 +766,19 @@ export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferenc
     eligibleTasks.push(...MICRO_TASKS.slice(0, 2));
   }
   
-  // Filter out completed tasks
-  eligibleTasks = eligibleTasks.filter(task => !completedTasks.includes(task.id));
+  // Filter out completed tasks (except for dailyReset tasks which should reappear)
+  eligibleTasks = eligibleTasks.filter(task => {
+    // If task has dailyReset flag, always show it
+    if (task.dailyReset) {
+      return true;
+    }
+    // If it's a weekly task, only show on the specified day
+    if (task.weeklyTask && task.dayOfWeek !== undefined) {
+      return currentDay === task.dayOfWeek && !completedTasks.includes(task.id);
+    }
+    // Otherwise, filter out if completed
+    return !completedTasks.includes(task.id);
+  });
   
   // If all tasks are completed, show congratulations
   if (eligibleTasks.length === 0) {
