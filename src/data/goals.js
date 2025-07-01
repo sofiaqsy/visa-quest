@@ -1,50 +1,19 @@
-// Goal categories
-export const GOAL_CATEGORIES = {
-  VISA: 'visa',
-  WORK: 'work',
-  PERSONAL: 'personal',
-  HEALTH: 'health',
-  LEARNING: 'learning',
-  FINANCE: 'finance'
-};
-
-// Time contexts for smart task distribution
-export const TIME_CONTEXTS = {
-  EARLY_MORNING: { start: 5, end: 8, name: 'Madrugada productiva' },
-  MORNING: { start: 8, end: 12, name: 'Mañana' },
-  LUNCH: { start: 12, end: 14, name: 'Mediodía' },
-  AFTERNOON: { start: 14, end: 18, name: 'Tarde' },
-  EVENING: { start: 18, end: 21, name: 'Noche' },
-  NIGHT: { start: 21, end: 24, name: 'Antes de dormir' },
-  LATE_NIGHT: { start: 0, end: 5, name: 'Madrugada' }
-};
-
-// Task priority levels
-export const PRIORITY_LEVELS = {
-  URGENT: 'urgent',
-  HIGH: 'high',
-  MEDIUM: 'medium',
-  LOW: 'low'
-};
+// Import configuration
+import { 
+  GOAL_CATEGORIES, 
+  TIME_CONTEXTS, 
+  PRIORITY_LEVELS,
+  CONTEXTUAL_TIPS,
+  SPECIAL_TASKS,
+  DEFAULT_USER_PREFERENCES,
+  getTimeContextByHour,
+  getCategoryById
+} from '../config/config';
 
 // Get current time context
 export const getCurrentTimeContext = () => {
   const hour = new Date().getHours();
-  
-  for (const [key, context] of Object.entries(TIME_CONTEXTS)) {
-    if (context.start <= context.end) {
-      if (hour >= context.start && hour < context.end) {
-        return key;
-      }
-    } else {
-      // Handle cases that span midnight
-      if (hour >= context.start || hour < context.end) {
-        return key;
-      }
-    }
-  }
-  
-  return 'MORNING'; // Default
+  return getTimeContextByHour(hour).key;
 };
 
 // Check if it's weekend
@@ -63,65 +32,27 @@ export const isWorkHours = () => {
 
 // Get contextual greeting based on time
 export const getContextualGreeting = () => {
-  const timeContext = getCurrentTimeContext();
-  
-  const greetings = {
-    EARLY_MORNING: [
-      "🌅 Madrugador/a! Aprovechemos esta energía",
-      "⭐ Las mejores ideas llegan temprano",
-      "🌟 Tu dedicación es admirable"
-    ],
-    MORNING: [
-      "☀️ Buenos días! Empecemos con todo",
-      "💪 Mañana poderosa en camino",
-      "🚀 A conquistar el día"
-    ],
-    LUNCH: [
-      "🍽️ Hora de recargar energías",
-      "☕ Pausa activa para seguir brillando",
-      "🌞 Mitad del día, ¡vas genial!"
-    ],
-    AFTERNOON: [
-      "⚡ Tarde productiva en marcha",
-      "💼 Sprint final del día laboral",
-      "🎯 Enfoque total en la tarde"
-    ],
-    EVENING: [
-      "🌆 Tiempo para ti y tus proyectos",
-      "✨ Hora de los sueños personales",
-      "🎨 Momento creativo del día"
-    ],
-    NIGHT: [
-      "🌙 Cerremos el día con broche de oro",
-      "🛁 Tiempo de relajación productiva",
-      "📚 Noche perfecta para planear mañana"
-    ],
-    LATE_NIGHT: [
-      "🌌 Noctámbulo/a productivo/a",
-      "🦉 Las mejores ideas no duermen",
-      "💫 Inspiración nocturna"
-    ]
-  };
-  
-  const contextGreetings = greetings[timeContext] || greetings.MORNING;
-  return contextGreetings[Math.floor(Math.random() * contextGreetings.length)];
+  const hour = new Date().getHours();
+  const timeContext = getTimeContextByHour(hour);
+  const greetings = timeContext.greeting;
+  return greetings[Math.floor(Math.random() * greetings.length)];
 };
 
 // Sample work tasks
 export const WORK_TASKS = [
   {
     id: 'work_bbva_time_report',
-    category: GOAL_CATEGORIES.WORK,
+    category: GOAL_CATEGORIES.WORK.id,
     icon: '⏰',
     title: "BBVA Time Report",
     description: "Registrar actividades del día en bbva-timereport.appspot.com",
     time: "10 min",
     color: 'from-blue-500 to-blue-700',
     preferredTime: ['AFTERNOON', 'EVENING'],
-    priority: PRIORITY_LEVELS.URGENT,
+    priority: PRIORITY_LEVELS.URGENT.id,
     recurring: true,
     tips: [
-      'Abre https://bbva-timereport.appspot.com/',
+      `Abre ${SPECIAL_TASKS.timeReport.url}`,
       'Registra en qué features trabajaste hoy',
       'Asigna el tiempo real a cada actividad',
       'Guarda antes de cerrar la página'
@@ -129,77 +60,77 @@ export const WORK_TASKS = [
   },
   {
     id: 'work_daily_standup',
-    category: GOAL_CATEGORIES.WORK,
+    category: GOAL_CATEGORIES.WORK.id,
     icon: '👥',
     title: "Daily standup",
     description: "Sincronizar con el equipo sobre avances y bloqueos",
     time: "15 min",
     color: 'from-blue-500 to-blue-700',
     preferredTime: ['MORNING'],
-    priority: PRIORITY_LEVELS.HIGH,
+    priority: PRIORITY_LEVELS.HIGH.id,
     recurring: true,
     tips: ['Prepara tus updates antes', 'Menciona bloqueos primero', 'Sé conciso']
   },
   {
     id: 'work_email_zero',
-    category: GOAL_CATEGORIES.WORK,
+    category: GOAL_CATEGORIES.WORK.id,
     icon: '📧',
     title: "Inbox Zero",
     description: "Procesar y organizar todos los correos pendientes",
     time: "30 min",
     color: 'from-purple-500 to-purple-700',
     preferredTime: ['MORNING', 'AFTERNOON'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     tips: ['Usa la regla 2 minutos', 'Archiva lo procesado', 'Delega cuando puedas']
   },
   {
     id: 'work_deep_focus',
-    category: GOAL_CATEGORIES.WORK,
+    category: GOAL_CATEGORIES.WORK.id,
     icon: '🎯',
     title: "Bloque de enfoque profundo",
     description: "Trabajar sin interrupciones en la tarea más importante",
     time: "90 min",
     color: 'from-green-500 to-green-700',
     preferredTime: ['MORNING', 'AFTERNOON'],
-    priority: PRIORITY_LEVELS.URGENT,
+    priority: PRIORITY_LEVELS.URGENT.id,
     tips: ['Modo avión activado', 'Cierra todas las pestañas', 'Técnica Pomodoro']
   },
   {
     id: 'work_code_review',
-    category: GOAL_CATEGORIES.WORK,
+    category: GOAL_CATEGORIES.WORK.id,
     icon: '👀',
     title: "Code review pendiente",
     description: "Revisar PR del equipo con feedback constructivo",
     time: "45 min",
     color: 'from-indigo-500 to-indigo-700',
     preferredTime: ['AFTERNOON'],
-    priority: PRIORITY_LEVELS.HIGH,
+    priority: PRIORITY_LEVELS.HIGH.id,
     tips: ['Busca edge cases', 'Sugiere mejoras', 'Sé amable en comentarios']
   },
   {
     id: 'work_documentation',
-    category: GOAL_CATEGORIES.WORK,
+    category: GOAL_CATEGORIES.WORK.id,
     icon: '📝',
     title: "Actualizar documentación",
     description: "Documentar cambios recientes del proyecto",
     time: "30 min",
     color: 'from-yellow-500 to-yellow-700',
     preferredTime: ['AFTERNOON', 'EVENING'],
-    priority: PRIORITY_LEVELS.LOW,
+    priority: PRIORITY_LEVELS.LOW.id,
     tips: ['Usa ejemplos claros', 'Incluye diagramas', 'Piensa en el próximo dev']
   },
   {
     id: 'work_weekly_time_summary',
-    category: GOAL_CATEGORIES.WORK,
+    category: GOAL_CATEGORIES.WORK.id,
     icon: '📈',
     title: "Resumen semanal de time report",
     description: "Revisar y validar las horas registradas de la semana",
     time: "15 min",
     color: 'from-indigo-500 to-indigo-700',
-    preferredTime: ['AFTERNOON'],
-    priority: PRIORITY_LEVELS.HIGH,
+    preferredTime: [SPECIAL_TASKS.weeklyReview.preferredTime],
+    priority: PRIORITY_LEVELS.HIGH.id,
     weeklyTask: true,
-    dayOfWeek: 5, // Friday
+    dayOfWeek: SPECIAL_TASKS.weeklyReview.dayOfWeek,
     tips: [
       'Verifica que todos los días tengan registro',
       'Confirma que las horas sumen correctamente',
@@ -213,78 +144,78 @@ export const WORK_TASKS = [
 export const PERSONAL_TASKS = [
   {
     id: 'personal_meditation',
-    category: GOAL_CATEGORIES.HEALTH,
+    category: GOAL_CATEGORIES.HEALTH.id,
     icon: '🧘‍♀️',
     title: "Meditación matutina",
     description: "5 minutos de mindfulness para empezar el día",
     time: "5 min",
     color: 'from-cyan-500 to-cyan-700',
     preferredTime: ['EARLY_MORNING', 'MORNING'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     recurring: true,
     tips: ['Encuentra un lugar tranquilo', 'Concéntrate en respirar', 'No juzgues pensamientos']
   },
   {
     id: 'personal_water',
-    category: GOAL_CATEGORIES.HEALTH,
+    category: GOAL_CATEGORIES.HEALTH.id,
     icon: '💧',
     title: "Hidratación",
     description: "Tomar un vaso de agua - meta 8 al día",
     time: "1 min",
     color: 'from-blue-400 to-blue-600',
     preferredTime: ['MORNING', 'LUNCH', 'AFTERNOON', 'EVENING'],
-    priority: PRIORITY_LEVELS.LOW,
+    priority: PRIORITY_LEVELS.LOW.id,
     recurring: true,
     microTask: true,
     tips: ['Agua a temperatura ambiente', 'Añade limón si quieres', 'Alejado de comidas']
   },
   {
     id: 'personal_exercise',
-    category: GOAL_CATEGORIES.HEALTH,
+    category: GOAL_CATEGORIES.HEALTH.id,
     icon: '🏃‍♀️',
     title: "Sesión de ejercicio",
     description: "30 minutos de actividad física",
     time: "30 min",
     color: 'from-red-500 to-red-700',
     preferredTime: ['MORNING', 'EVENING'],
-    priority: PRIORITY_LEVELS.HIGH,
+    priority: PRIORITY_LEVELS.HIGH.id,
     tips: ['Calienta primero', 'Escucha tu cuerpo', 'Hidrátate bien']
   },
   {
     id: 'personal_reading',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '📚',
     title: "Lectura diaria",
     description: "Avanzar en tu libro actual",
     time: "20 min",
     color: 'from-purple-500 to-pink-600',
     preferredTime: ['LUNCH', 'EVENING', 'NIGHT'],
-    priority: PRIORITY_LEVELS.LOW,
+    priority: PRIORITY_LEVELS.LOW.id,
     tips: ['Sin distracciones', 'Toma notas si quieres', 'Disfruta el momento']
   },
   {
     id: 'personal_planning',
-    category: GOAL_CATEGORIES.PERSONAL,
+    category: GOAL_CATEGORIES.PERSONAL.id,
     icon: '📅',
     title: "Planificar mañana",
     description: "Revisar y organizar tareas del día siguiente",
     time: "10 min",
     color: 'from-indigo-500 to-purple-600',
     preferredTime: ['EVENING', 'NIGHT'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     tips: ['Prioriza 3 importantes', 'Sé realista', 'Incluye descansos']
   },
   // History Telling Course Tasks
   {
     id: 'storytelling_morning_pages',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '✍️',
     title: "Morning Pages - Escritura libre",
     description: "3 páginas de escritura libre para desbloquear creatividad narrativa",
     time: "30 min",
     color: 'from-amber-500 to-amber-700',
     preferredTime: ['EARLY_MORNING', 'MORNING'],
-    priority: PRIORITY_LEVELS.HIGH,
+    priority: PRIORITY_LEVELS.HIGH.id,
     recurring: true,
     tips: [
       'No te detengas a editar', 
@@ -295,14 +226,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_story_structure',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '🏗️',
     title: "Análisis de estructura narrativa",
     description: "Estudiar la estructura de una historia exitosa (película, libro, podcast)",
     time: "45 min",
     color: 'from-indigo-500 to-indigo-700',
     preferredTime: ['AFTERNOON', 'EVENING'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     tips: [
       'Identifica los 3 actos principales',
       'Marca el punto de giro',
@@ -312,14 +243,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_character_development',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '👥',
     title: "Desarrollo de personajes",
     description: "Crear o profundizar en un personaje con backstory completo",
     time: "25 min",
     color: 'from-purple-500 to-purple-700',
     preferredTime: ['MORNING', 'AFTERNOON'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     tips: [
       'Define motivaciones profundas',
       'Crea contradicciones realistas',
@@ -329,14 +260,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_voice_practice',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '🎙️',
     title: "Práctica de narración oral",
     description: "Contar una historia en voz alta (grabar opcional)",
     time: "15 min",
     color: 'from-red-500 to-red-700',
     preferredTime: ['EVENING', 'NIGHT'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     recurring: true,
     tips: [
       'Modula tu voz según la emoción',
@@ -347,14 +278,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_micro_story',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '⚡',
     title: "Micro-relato del día",
     description: "Escribir una historia completa en 100 palabras o menos",
     time: "10 min",
     color: 'from-yellow-500 to-yellow-700',
     preferredTime: ['LUNCH', 'AFTERNOON', 'EVENING'],
-    priority: PRIORITY_LEVELS.LOW,
+    priority: PRIORITY_LEVELS.LOW.id,
     microTask: true,
     tips: [
       'Cada palabra debe contar',
@@ -365,14 +296,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_sensory_details',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '👁️',
     title: "Ejercicio sensorial",
     description: "Describir una escena usando los 5 sentidos",
     time: "20 min",
     color: 'from-teal-500 to-teal-700',
     preferredTime: ['MORNING', 'AFTERNOON'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     tips: [
       'No solo lo visual importa',
       'Los olores evocan memorias',
@@ -382,14 +313,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_dialogue_workshop',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '💬',
     title: "Taller de diálogos",
     description: "Escribir una conversación que revele carácter sin decirlo",
     time: "25 min",
     color: 'from-green-500 to-green-700',
     preferredTime: ['AFTERNOON', 'EVENING'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     tips: [
       'Subtexto es clave',
       'Cada personaje habla diferente',
@@ -399,14 +330,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_story_journal',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '📔',
     title: "Diario de historias cotidianas",
     description: "Capturar una anécdota del día con potencial narrativo",
     time: "15 min",
     color: 'from-pink-500 to-pink-700',
     preferredTime: ['EVENING', 'NIGHT'],
-    priority: PRIORITY_LEVELS.LOW,
+    priority: PRIORITY_LEVELS.LOW.id,
     recurring: true,
     tips: [
       'Busca lo extraordinario en lo ordinario',
@@ -417,14 +348,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_plot_twist',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '🔄',
     title: "Ejercicio de giro argumental",
     description: "Tomar una historia conocida y darle un giro inesperado",
     time: "30 min",
     color: 'from-orange-500 to-orange-700',
     preferredTime: ['AFTERNOON', 'EVENING'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     tips: [
       'Subvierte expectativas lógicamente',
       'El giro debe estar sembrado',
@@ -434,14 +365,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_emotion_mapping',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '❤️',
     title: "Mapa emocional de escena",
     description: "Planificar el viaje emocional del lector en una escena",
     time: "20 min",
     color: 'from-rose-500 to-rose-700',
     preferredTime: ['MORNING', 'AFTERNOON'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     tips: [
       'Define emoción inicial y final',
       'Marca puntos de cambio',
@@ -451,14 +382,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_hook_practice',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '🎣',
     title: "Práctica de ganchos narrativos",
     description: "Escribir 5 primeras líneas irresistibles",
     time: "15 min",
     color: 'from-cyan-500 to-cyan-700',
     preferredTime: ['MORNING', 'LUNCH'],
-    priority: PRIORITY_LEVELS.LOW,
+    priority: PRIORITY_LEVELS.LOW.id,
     microTask: true,
     tips: [
       'Empieza con acción o misterio',
@@ -469,14 +400,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_world_building',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '🌍',
     title: "Construcción de mundo",
     description: "Desarrollar reglas y detalles de tu universo narrativo",
     time: "40 min",
     color: 'from-emerald-500 to-emerald-700',
     preferredTime: ['EVENING', 'NIGHT'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.MEDIUM.id,
     tips: [
       'Consistencia es credibilidad',
       'Menos exposición, más inmersión',
@@ -486,14 +417,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_feedback_session',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '🤝',
     title: "Sesión de feedback",
     description: "Compartir tu historia y recibir retroalimentación constructiva",
     time: "45 min",
     color: 'from-blue-500 to-blue-700',
     preferredTime: ['EVENING'],
-    priority: PRIORITY_LEVELS.HIGH,
+    priority: PRIORITY_LEVELS.HIGH.id,
     tips: [
       'Escucha sin defender',
       'Haz preguntas específicas',
@@ -503,14 +434,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_revision_deep',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '✏️',
     title: "Revisión profunda",
     description: "Editar y pulir una historia existente",
     time: "60 min",
     color: 'from-gray-500 to-gray-700',
     preferredTime: ['MORNING', 'AFTERNOON'],
-    priority: PRIORITY_LEVELS.HIGH,
+    priority: PRIORITY_LEVELS.HIGH.id,
     tips: [
       'Primera pasada: estructura',
       'Segunda pasada: personajes',
@@ -520,14 +451,14 @@ export const PERSONAL_TASKS = [
   },
   {
     id: 'storytelling_inspiration_hunt',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '🔍',
     title: "Cacería de inspiración",
     description: "Salir a observar y recolectar material para historias",
     time: "30 min",
     color: 'from-violet-500 to-violet-700',
     preferredTime: ['LUNCH', 'AFTERNOON'],
-    priority: PRIORITY_LEVELS.LOW,
+    priority: PRIORITY_LEVELS.LOW.id,
     tips: [
       'Observa sin juzgar',
       'Escucha conversaciones ajenas',
@@ -541,7 +472,7 @@ export const PERSONAL_TASKS = [
 export const MICRO_TASKS = [
   {
     id: 'micro_stretch',
-    category: GOAL_CATEGORIES.HEALTH,
+    category: GOAL_CATEGORIES.HEALTH.id,
     icon: '🤸‍♀️',
     title: "Estiramiento rápido",
     description: "Estira cuello, hombros y espalda",
@@ -552,7 +483,7 @@ export const MICRO_TASKS = [
   },
   {
     id: 'micro_eyes',
-    category: GOAL_CATEGORIES.HEALTH,
+    category: GOAL_CATEGORIES.HEALTH.id,
     icon: '👀',
     title: "Descanso visual 20-20-20",
     description: "Mira algo a 20 pies por 20 segundos",
@@ -563,7 +494,7 @@ export const MICRO_TASKS = [
   },
   {
     id: 'micro_breathe',
-    category: GOAL_CATEGORIES.HEALTH,
+    category: GOAL_CATEGORIES.HEALTH.id,
     icon: '🌬️',
     title: "Respiración profunda",
     description: "3 respiraciones profundas para resetear",
@@ -574,7 +505,7 @@ export const MICRO_TASKS = [
   },
   {
     id: 'micro_gratitude',
-    category: GOAL_CATEGORIES.PERSONAL,
+    category: GOAL_CATEGORIES.PERSONAL.id,
     icon: '🙏',
     title: "Momento de gratitud",
     description: "Piensa en 3 cosas por las que agradecer",
@@ -586,7 +517,7 @@ export const MICRO_TASKS = [
   // Storytelling Micro Tasks
   {
     id: 'micro_story_prompt',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '💭',
     title: "Prompt creativo rápido",
     description: "Genera 3 ideas de historia a partir de una palabra aleatoria",
@@ -597,7 +528,7 @@ export const MICRO_TASKS = [
   },
   {
     id: 'micro_verb_upgrade',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '🎯',
     title: "Mejora de verbos",
     description: "Reemplaza 10 verbos débiles por verbos más específicos",
@@ -608,7 +539,7 @@ export const MICRO_TASKS = [
   },
   {
     id: 'micro_title_brainstorm',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '💡',
     title: "Lluvia de títulos",
     description: "Genera 10 títulos alternativos para tu historia actual",
@@ -619,7 +550,7 @@ export const MICRO_TASKS = [
   },
   {
     id: 'micro_emotion_quickwrite',
-    category: GOAL_CATEGORIES.LEARNING,
+    category: GOAL_CATEGORIES.LEARNING.id,
     icon: '😊',
     title: "Escritura emocional express",
     description: "Escribe un párrafo que transmita una emoción sin nombrarla",
@@ -632,66 +563,16 @@ export const MICRO_TASKS = [
 
 // Function to get contextual tips based on category and time
 export const getContextualTips = (category, timeContext) => {
-  const tips = {
-    [GOAL_CATEGORIES.WORK]: {
-      MORNING: {
-        title: "💼 Tip de productividad matutina",
-        content: "Empieza con la tarea más importante mientras tu energía está al máximo. El resto del día será más fácil."
-      },
-      AFTERNOON: {
-        title: "⚡ Combate la fatiga de la tarde",
-        content: "Si sientes el bajón post-almuerzo, prueba una caminata de 5 minutos o un vaso de agua fría."
-      },
-      EVENING: {
-        title: "📝 Cierre del día laboral",
-        content: "No olvides completar tu BBVA Time Report antes de cerrar el día. Solo toma 10 minutos."
-      }
-    },
-    [GOAL_CATEGORIES.PERSONAL]: {
-      MORNING: {
-        title: "🌅 Ritual matutino",
-        content: "Establece una rutina matutina consistente. Tu cerebro agradecerá la predictibilidad."
-      },
-      EVENING: {
-        title: "🌙 Tiempo de calidad",
-        content: "Las noches son perfectas para proyectos personales. Sin interrupciones laborales."
-      },
-      NIGHT: {
-        title: "😴 Preparación para dormir",
-        content: "Evita pantallas 30 minutos antes de dormir. Tu sueño será más reparador."
-      }
-    },
-    [GOAL_CATEGORIES.HEALTH]: {
-      MORNING: {
-        title: "💪 Energía matutina",
-        content: "Ejercitarte en la mañana acelera tu metabolismo para todo el día."
-      },
-      AFTERNOON: {
-        title: "🥗 Snack saludable",
-        content: "Si tienes hambre, opta por frutos secos o fruta. Evita el azúcar procesada."
-      },
-      EVENING: {
-        title: "🧘‍♀️ Relájate activamente",
-        content: "El yoga suave o estiramientos nocturnos mejoran la calidad del sueño."
-      }
-    },
-    [GOAL_CATEGORIES.LEARNING]: {
-      MORNING: {
-        title: "🧠 Mente fresca",
-        content: "La mañana es ideal para aprender conceptos nuevos. Tu cerebro absorbe mejor la información."
-      },
-      AFTERNOON: {
-        title: "📝 Práctica creativa",
-        content: "Después del almuerzo es buen momento para ejercicios creativos y experimentación."
-      },
-      EVENING: {
-        title: "🌟 Reflexión narrativa",
-        content: "La noche invita a la introspección. Perfecto para escribir desde las emociones."
-      }
-    }
-  };
+  const categoryTips = CONTEXTUAL_TIPS[category];
+  if (!categoryTips) {
+    return {
+      id: `tip_default_${Date.now()}`,
+      title: "💡 Tip del momento",
+      content: "Cada pequeño paso cuenta. Sigue adelante con determinación.",
+      color: 'from-gradient-to-gradient'
+    };
+  }
 
-  const categoryTips = tips[category] || tips[GOAL_CATEGORIES.PERSONAL];
   const contextTip = categoryTips[timeContext] || categoryTips.MORNING || {
     title: "💡 Tip del momento",
     content: "Cada pequeño paso cuenta. Sigue adelante con determinación."
@@ -759,11 +640,11 @@ export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferenc
     }
     
     // Otherwise, apply smart defaults
-    if (isWorkTime && task.category === GOAL_CATEGORIES.WORK) {
+    if (isWorkTime && task.category === GOAL_CATEGORIES.WORK.id) {
       return true;
     }
     
-    if (!isWorkTime && task.category !== GOAL_CATEGORIES.WORK) {
+    if (!isWorkTime && task.category !== GOAL_CATEGORIES.WORK.id) {
       return true;
     }
     
@@ -782,15 +663,13 @@ export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferenc
   
   // Sort by priority
   timeFilteredTasks.sort((a, b) => {
-    const priorityOrder = {
-      [PRIORITY_LEVELS.URGENT]: 0,
-      [PRIORITY_LEVELS.HIGH]: 1,
-      [PRIORITY_LEVELS.MEDIUM]: 2,
-      [PRIORITY_LEVELS.LOW]: 3,
-      undefined: 4
-    };
+    const priorityA = Object.values(PRIORITY_LEVELS).find(p => p.id === a.priority);
+    const priorityB = Object.values(PRIORITY_LEVELS).find(p => p.id === b.priority);
     
-    return (priorityOrder[a.priority] || 4) - (priorityOrder[b.priority] || 4);
+    const orderA = priorityA ? priorityA.order : 4;
+    const orderB = priorityB ? priorityB.order : 4;
+    
+    return orderA - orderB;
   });
   
   // Take a reasonable number of tasks
@@ -820,37 +699,5 @@ export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferenc
   return result;
 };
 
-// Default user preferences
-export const DEFAULT_USER_PREFERENCES = {
-  workHours: {
-    start: 9,
-    end: 18,
-    flexFriday: true
-  },
-  breakTimes: [
-    { start: 12, end: 13 }, // Lunch
-    { start: 15.5, end: 15.75 } // Afternoon break
-  ],
-  focusBlocks: [
-    { start: 9, end: 11 },
-    { start: 14, end: 16 }
-  ],
-  categories: {
-    [GOAL_CATEGORIES.WORK]: {
-      enabled: true,
-      maxDailyTasks: 8
-    },
-    [GOAL_CATEGORIES.PERSONAL]: {
-      enabled: true,
-      maxDailyTasks: 5
-    },
-    [GOAL_CATEGORIES.HEALTH]: {
-      enabled: true,
-      maxDailyTasks: 4
-    },
-    [GOAL_CATEGORIES.LEARNING]: {
-      enabled: true,
-      maxDailyTasks: 2
-    }
-  }
-};
+// Export everything from config that might be needed
+export { GOAL_CATEGORIES, TIME_CONTEXTS, PRIORITY_LEVELS, DEFAULT_USER_PREFERENCES };
