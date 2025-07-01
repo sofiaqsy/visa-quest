@@ -236,6 +236,267 @@ export const PERSONAL_TASKS = [
     preferredTime: ['EVENING', 'NIGHT'],
     priority: PRIORITY_LEVELS.MEDIUM,
     tips: ['Prioriza 3 importantes', 'Sé realista', 'Incluye descansos']
+  },
+  // History Telling Course Tasks
+  {
+    id: 'storytelling_morning_pages',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '✍️',
+    title: "Morning Pages - Escritura libre",
+    description: "3 páginas de escritura libre para desbloquear creatividad narrativa",
+    time: "30 min",
+    color: 'from-amber-500 to-amber-700',
+    preferredTime: ['EARLY_MORNING', 'MORNING'],
+    priority: PRIORITY_LEVELS.HIGH,
+    recurring: true,
+    tips: [
+      'No te detengas a editar', 
+      'Escribe sin parar por 30 min', 
+      'No hay tema incorrecto',
+      'Es para liberar, no para mostrar'
+    ]
+  },
+  {
+    id: 'storytelling_story_structure',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '🏗️',
+    title: "Análisis de estructura narrativa",
+    description: "Estudiar la estructura de una historia exitosa (película, libro, podcast)",
+    time: "45 min",
+    color: 'from-indigo-500 to-indigo-700',
+    preferredTime: ['AFTERNOON', 'EVENING'],
+    priority: PRIORITY_LEVELS.MEDIUM,
+    tips: [
+      'Identifica los 3 actos principales',
+      'Marca el punto de giro',
+      'Analiza el arco del protagonista',
+      'Toma notas de técnicas efectivas'
+    ]
+  },
+  {
+    id: 'storytelling_character_development',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '👥',
+    title: "Desarrollo de personajes",
+    description: "Crear o profundizar en un personaje con backstory completo",
+    time: "25 min",
+    color: 'from-purple-500 to-purple-700',
+    preferredTime: ['MORNING', 'AFTERNOON'],
+    priority: PRIORITY_LEVELS.MEDIUM,
+    tips: [
+      'Define motivaciones profundas',
+      'Crea contradicciones realistas',
+      'Desarrolla su voz única',
+      'Incluye detalles memorables'
+    ]
+  },
+  {
+    id: 'storytelling_voice_practice',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '🎙️',
+    title: "Práctica de narración oral",
+    description: "Contar una historia en voz alta (grabar opcional)",
+    time: "15 min",
+    color: 'from-red-500 to-red-700',
+    preferredTime: ['EVENING', 'NIGHT'],
+    priority: PRIORITY_LEVELS.MEDIUM,
+    recurring: true,
+    tips: [
+      'Modula tu voz según la emoción',
+      'Practica pausas dramáticas',
+      'Usa gestos aunque nadie te vea',
+      'Grábate para autoevaluarte'
+    ]
+  },
+  {
+    id: 'storytelling_micro_story',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '⚡',
+    title: "Micro-relato del día",
+    description: "Escribir una historia completa en 100 palabras o menos",
+    time: "10 min",
+    color: 'from-yellow-500 to-yellow-700',
+    preferredTime: ['LUNCH', 'AFTERNOON', 'EVENING'],
+    priority: PRIORITY_LEVELS.LOW,
+    microTask: true,
+    tips: [
+      'Cada palabra debe contar',
+      'Empieza in media res',
+      'Implica más de lo que dices',
+      'Busca el giro inesperado'
+    ]
+  },
+  {
+    id: 'storytelling_sensory_details',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '👁️',
+    title: "Ejercicio sensorial",
+    description: "Describir una escena usando los 5 sentidos",
+    time: "20 min",
+    color: 'from-teal-500 to-teal-700',
+    preferredTime: ['MORNING', 'AFTERNOON'],
+    priority: PRIORITY_LEVELS.MEDIUM,
+    tips: [
+      'No solo lo visual importa',
+      'Los olores evocan memorias',
+      'Incluye texturas y temperaturas',
+      'Sonidos ambientales dan vida'
+    ]
+  },
+  {
+    id: 'storytelling_dialogue_workshop',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '💬',
+    title: "Taller de diálogos",
+    description: "Escribir una conversación que revele carácter sin decirlo",
+    time: "25 min",
+    color: 'from-green-500 to-green-700',
+    preferredTime: ['AFTERNOON', 'EVENING'],
+    priority: PRIORITY_LEVELS.MEDIUM,
+    tips: [
+      'Subtexto es clave',
+      'Cada personaje habla diferente',
+      'Conflicto en cada intercambio',
+      'Menos tags, más acción'
+    ]
+  },
+  {
+    id: 'storytelling_story_journal',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '📔',
+    title: "Diario de historias cotidianas",
+    description: "Capturar una anécdota del día con potencial narrativo",
+    time: "15 min",
+    color: 'from-pink-500 to-pink-700',
+    preferredTime: ['EVENING', 'NIGHT'],
+    priority: PRIORITY_LEVELS.LOW,
+    recurring: true,
+    tips: [
+      'Busca lo extraordinario en lo ordinario',
+      'Anota diálogos reales interesantes',
+      'Captura gestos y expresiones',
+      'Material futuro para historias'
+    ]
+  },
+  {
+    id: 'storytelling_plot_twist',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '🔄',
+    title: "Ejercicio de giro argumental",
+    description: "Tomar una historia conocida y darle un giro inesperado",
+    time: "30 min",
+    color: 'from-orange-500 to-orange-700',
+    preferredTime: ['AFTERNOON', 'EVENING'],
+    priority: PRIORITY_LEVELS.MEDIUM,
+    tips: [
+      'Subvierte expectativas lógicamente',
+      'El giro debe estar sembrado',
+      'Cambia perspectiva del narrador',
+      'Explora "¿qué pasaría si...?"'
+    ]
+  },
+  {
+    id: 'storytelling_emotion_mapping',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '❤️',
+    title: "Mapa emocional de escena",
+    description: "Planificar el viaje emocional del lector en una escena",
+    time: "20 min",
+    color: 'from-rose-500 to-rose-700',
+    preferredTime: ['MORNING', 'AFTERNOON'],
+    priority: PRIORITY_LEVELS.MEDIUM,
+    tips: [
+      'Define emoción inicial y final',
+      'Marca puntos de cambio',
+      'Usa ritmo para intensificar',
+      'Contraste crea impacto'
+    ]
+  },
+  {
+    id: 'storytelling_hook_practice',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '🎣',
+    title: "Práctica de ganchos narrativos",
+    description: "Escribir 5 primeras líneas irresistibles",
+    time: "15 min",
+    color: 'from-cyan-500 to-cyan-700',
+    preferredTime: ['MORNING', 'LUNCH'],
+    priority: PRIORITY_LEVELS.LOW,
+    microTask: true,
+    tips: [
+      'Empieza con acción o misterio',
+      'Voz única desde la primera palabra',
+      'Promete conflicto inmediato',
+      'Sorprende sin confundir'
+    ]
+  },
+  {
+    id: 'storytelling_world_building',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '🌍',
+    title: "Construcción de mundo",
+    description: "Desarrollar reglas y detalles de tu universo narrativo",
+    time: "40 min",
+    color: 'from-emerald-500 to-emerald-700',
+    preferredTime: ['EVENING', 'NIGHT'],
+    priority: PRIORITY_LEVELS.MEDIUM,
+    tips: [
+      'Consistencia es credibilidad',
+      'Menos exposición, más inmersión',
+      'Las reglas crean tensión',
+      'Detalles pequeños dan vida'
+    ]
+  },
+  {
+    id: 'storytelling_feedback_session',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '🤝',
+    title: "Sesión de feedback",
+    description: "Compartir tu historia y recibir retroalimentación constructiva",
+    time: "45 min",
+    color: 'from-blue-500 to-blue-700',
+    preferredTime: ['EVENING'],
+    priority: PRIORITY_LEVELS.HIGH,
+    tips: [
+      'Escucha sin defender',
+      'Haz preguntas específicas',
+      'Agradece toda crítica',
+      'Toma notas para mejorar'
+    ]
+  },
+  {
+    id: 'storytelling_revision_deep',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '✏️',
+    title: "Revisión profunda",
+    description: "Editar y pulir una historia existente",
+    time: "60 min",
+    color: 'from-gray-500 to-gray-700',
+    preferredTime: ['MORNING', 'AFTERNOON'],
+    priority: PRIORITY_LEVELS.HIGH,
+    tips: [
+      'Primera pasada: estructura',
+      'Segunda pasada: personajes',
+      'Tercera pasada: prosa',
+      'Lee en voz alta al final'
+    ]
+  },
+  {
+    id: 'storytelling_inspiration_hunt',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '🔍',
+    title: "Cacería de inspiración",
+    description: "Salir a observar y recolectar material para historias",
+    time: "30 min",
+    color: 'from-violet-500 to-violet-700',
+    preferredTime: ['LUNCH', 'AFTERNOON'],
+    priority: PRIORITY_LEVELS.LOW,
+    tips: [
+      'Observa sin juzgar',
+      'Escucha conversaciones ajenas',
+      'Fotografía detalles curiosos',
+      'Pregúntate "¿y si...?"'
+    ]
   }
 ];
 
@@ -284,6 +545,51 @@ export const MICRO_TASKS = [
     color: 'from-pink-400 to-pink-600',
     microTask: true,
     tips: ['Sé específico', 'Incluye algo pequeño', 'Siente la gratitud']
+  },
+  // Storytelling Micro Tasks
+  {
+    id: 'micro_story_prompt',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '💭',
+    title: "Prompt creativo rápido",
+    description: "Genera 3 ideas de historia a partir de una palabra aleatoria",
+    time: "5 min",
+    color: 'from-purple-400 to-purple-600',
+    microTask: true,
+    tips: ['No filtres ideas', 'Busca conexiones inusuales', 'Piensa en géneros diversos']
+  },
+  {
+    id: 'micro_verb_upgrade',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '🎯',
+    title: "Mejora de verbos",
+    description: "Reemplaza 10 verbos débiles por verbos más específicos",
+    time: "5 min",
+    color: 'from-green-400 to-green-600',
+    microTask: true,
+    tips: ['Evita ser/estar en exceso', 'Verbos específicos pintan escenas', 'Muestra, no cuentes']
+  },
+  {
+    id: 'micro_title_brainstorm',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '💡',
+    title: "Lluvia de títulos",
+    description: "Genera 10 títulos alternativos para tu historia actual",
+    time: "7 min",
+    color: 'from-yellow-400 to-yellow-600',
+    microTask: true,
+    tips: ['Juega con aliteraciones', 'Prueba metáforas', 'Títulos cortos impactan más']
+  },
+  {
+    id: 'micro_emotion_quickwrite',
+    category: GOAL_CATEGORIES.LEARNING,
+    icon: '😊',
+    title: "Escritura emocional express",
+    description: "Escribe un párrafo que transmita una emoción sin nombrarla",
+    time: "8 min",
+    color: 'from-red-400 to-red-600',
+    microTask: true,
+    tips: ['Usa lenguaje corporal', 'Ambiente refleja emoción', 'Acciones revelan sentimientos']
   }
 ];
 
@@ -330,6 +636,20 @@ export const getContextualTips = (category, timeContext) => {
       EVENING: {
         title: "🧘‍♀️ Relájate activamente",
         content: "El yoga suave o estiramientos nocturnos mejoran la calidad del sueño."
+      }
+    },
+    [GOAL_CATEGORIES.LEARNING]: {
+      MORNING: {
+        title: "🧠 Mente fresca",
+        content: "La mañana es ideal para aprender conceptos nuevos. Tu cerebro absorbe mejor la información."
+      },
+      AFTERNOON: {
+        title: "📝 Práctica creativa",
+        content: "Después del almuerzo es buen momento para ejercicios creativos y experimentación."
+      },
+      EVENING: {
+        title: "🌟 Reflexión narrativa",
+        content: "La noche invita a la introspección. Perfecto para escribir desde las emociones."
       }
     }
   };
