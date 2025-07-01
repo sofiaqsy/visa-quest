@@ -2,22 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, Circle, Settings, Plus, X, Briefcase, Heart, Calendar, Clock } from 'lucide-react';
 import './SimpleDashboard.css';
 
-// Configuration for each category - Removed unused CATEGORIES
-const CATEGORY_CONFIG = {
-  work: {
-    id: 'work',
-    name: 'Trabajo',
-    icon: <Briefcase size={20} />,
-    color: 'from-blue-500 to-blue-600'
-  },
-  personal: {
-    id: 'personal', 
-    name: 'Personal',
-    icon: <Heart size={20} />,
-    color: 'from-purple-500 to-purple-600'
-  }
-};
-
 // Default projects
 const DEFAULT_PROJECTS = {
   work: [
