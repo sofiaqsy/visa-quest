@@ -110,41 +110,21 @@ export const getContextualGreeting = () => {
 // Sample work tasks
 export const WORK_TASKS = [
   {
-    id: 'work_time_report_morning',
+    id: 'work_bbva_time_report',
     category: GOAL_CATEGORIES.WORK,
     icon: '⏰',
-    title: "Time Report - Inicio del día",
-    description: "Registrar hora de entrada y planificar actividades del día",
-    time: "5 min",
-    color: 'from-teal-500 to-teal-700',
-    preferredTime: ['MORNING'],
-    priority: PRIORITY_LEVELS.HIGH,
-    recurring: true,
-    dailyReset: true,
-    tips: [
-      'Registra tu hora exacta de entrada',
-      'Lista tus prioridades del día',
-      'Estima tiempos para cada tarea',
-      'Configura recordatorios importantes'
-    ]
-  },
-  {
-    id: 'work_time_report_evening',
-    category: GOAL_CATEGORIES.WORK,
-    icon: '📊',
-    title: "Time Report - Cierre del día",
-    description: "Registrar hora de salida y resumir actividades completadas",
+    title: "BBVA Time Report",
+    description: "Registrar actividades del día en bbva-timereport.appspot.com",
     time: "10 min",
-    color: 'from-orange-500 to-orange-700',
+    color: 'from-blue-500 to-blue-700',
     preferredTime: ['AFTERNOON', 'EVENING'],
-    priority: PRIORITY_LEVELS.HIGH,
+    priority: PRIORITY_LEVELS.URGENT,
     recurring: true,
-    dailyReset: true,
     tips: [
-      'Registra tu hora de salida',
-      'Documenta tareas completadas',
-      'Anota tiempo real vs estimado',
-      'Identifica bloqueos o pendientes'
+      'Abre https://bbva-timereport.appspot.com/',
+      'Registra en qué features trabajaste hoy',
+      'Asigna el tiempo real a cada actividad',
+      'Guarda antes de cerrar la página'
     ]
   },
   {
@@ -212,19 +192,19 @@ export const WORK_TASKS = [
     id: 'work_weekly_time_summary',
     category: GOAL_CATEGORIES.WORK,
     icon: '📈',
-    title: "Resumen semanal de horas",
-    description: "Consolidar y revisar el time report de la semana",
-    time: "20 min",
+    title: "Resumen semanal de time report",
+    description: "Revisar y validar las horas registradas de la semana",
+    time: "15 min",
     color: 'from-indigo-500 to-indigo-700',
     preferredTime: ['AFTERNOON'],
-    priority: PRIORITY_LEVELS.MEDIUM,
+    priority: PRIORITY_LEVELS.HIGH,
     weeklyTask: true,
     dayOfWeek: 5, // Friday
     tips: [
-      'Suma total de horas trabajadas',
+      'Verifica que todos los días tengan registro',
+      'Confirma que las horas sumen correctamente',
       'Identifica patrones de productividad',
-      'Compara estimados vs reales',
-      'Prepara reporte para el manager'
+      'Prepara resumen para el manager si es necesario'
     ]
   }
 ];
@@ -647,22 +627,6 @@ export const MICRO_TASKS = [
     color: 'from-red-400 to-red-600',
     microTask: true,
     tips: ['Usa lenguaje corporal', 'Ambiente refleja emoción', 'Acciones revelan sentimientos']
-  },
-  // Work Micro Tasks
-  {
-    id: 'micro_time_check',
-    category: GOAL_CATEGORIES.WORK,
-    icon: '⏱️',
-    title: "Check de tiempo",
-    description: "Registra en qué has invertido la última hora",
-    time: "2 min",
-    color: 'from-blue-400 to-blue-600',
-    microTask: true,
-    tips: [
-      'Sé honesto con el tiempo real',
-      'Identifica distracciones',
-      'Ajusta plan si es necesario'
-    ]
   }
 ];
 
@@ -680,7 +644,7 @@ export const getContextualTips = (category, timeContext) => {
       },
       EVENING: {
         title: "📝 Cierre del día laboral",
-        content: "Dedica 10 minutos a escribir los pendientes de mañana. Tu mente descansará mejor."
+        content: "No olvides completar tu BBVA Time Report antes de cerrar el día. Solo toma 10 minutos."
       }
     },
     [GOAL_CATEGORIES.PERSONAL]: {
@@ -766,12 +730,8 @@ export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferenc
     eligibleTasks.push(...MICRO_TASKS.slice(0, 2));
   }
   
-  // Filter out completed tasks (except for dailyReset tasks which should reappear)
+  // Filter out completed tasks
   eligibleTasks = eligibleTasks.filter(task => {
-    // If task has dailyReset flag, always show it
-    if (task.dailyReset) {
-      return true;
-    }
     // If it's a weekly task, only show on the specified day
     if (task.weeklyTask && task.dayOfWeek !== undefined) {
       return currentDay === task.dayOfWeek && !completedTasks.includes(task.id);
