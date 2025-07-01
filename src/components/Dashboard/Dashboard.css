@@ -66,7 +66,7 @@
   95% { opacity: 0; }
 }
 
-/* Main Content Area */
+/* Main Content Area - CRITICAL FIX FOR ISOLATION */
 .dashboard-content {
   position: fixed;
   top: 0;
@@ -77,13 +77,41 @@
   padding-top: 60px;
   padding-bottom: 70px;
   touch-action: none;
+  /* Create stacking context */
+  z-index: 1;
+  isolation: isolate;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
+/* When tab is active (not home), enable scroll */
 .dashboard-content.tab-active {
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  /* Ensure scroll events don't leak to home view */
+  overscroll-behavior: contain;
+  -webkit-overscroll-behavior: contain;
+}
+
+/* Progress View with complete isolation */
+.dashboard-content.tab-active .progress-view {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y !important;
+  /* Create new stacking context */
+  z-index: 10;
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  /* Ensure no event propagation to cards */
+  pointer-events: auto;
 }
 
 /* Reset Button */
@@ -112,7 +140,7 @@
   transform: scale(1.1) rotate(180deg);
 }
 
-/* Cards Wrapper - FIXED */
+/* Cards Wrapper - Complete isolation for home view */
 .cards-wrapper {
   position: absolute;
   top: 0;
@@ -121,6 +149,21 @@
   height: 100%;
   perspective: 1000px;
   transform-style: preserve-3d;
+  overflow: hidden !important;
+  touch-action: none !important;
+  -webkit-overflow-scrolling: auto !important;
+  /* Ensure no scroll events leak in */
+  overscroll-behavior: none;
+  -webkit-overscroll-behavior: none;
+  /* Create isolated context */
+  isolation: isolate;
+  z-index: 1;
+}
+
+/* Hide cards wrapper when not on home tab */
+.dashboard-content.tab-active .cards-wrapper {
+  display: none !important;
+  pointer-events: none !important;
 }
 
 /* Loading State */
@@ -473,7 +516,7 @@
   height: 48px;
 }
 
-/* Progress View Styles - UPDATED */
+/* Progress View Styles - COMPLETE ISOLATION */
 .progress-view {
   width: 100%;
   min-height: calc(100vh - 130px); /* Account for header and tab bar */
@@ -482,6 +525,15 @@
   color: white;
   position: relative;
   z-index: 1;
+  /* Ensure complete isolation */
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  /* Force GPU acceleration */
+  will-change: transform;
+  /* Contain all scroll events */
+  overscroll-behavior-y: contain;
+  -webkit-overscroll-behavior-y: contain;
 }
 
 .progress-header {
@@ -1031,96 +1083,6 @@
   color: white;
 }
 
-/* Weekly Progress */
-.weekly-progress {
-  margin-bottom: 40px;
-}
-
-.week-progress-item {
-  background: rgba(255,255,255,0.05);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 12px;
-}
-
-.week-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.week-number {
-  font-weight: 600;
-  color: white;
-}
-
-.week-name {
-  opacity: 0.8;
-  color: white;
-}
-
-.week-progress-bar {
-  height: 8px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.week-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  border-radius: 4px;
-  transition: width 0.6s ease;
-}
-
-.week-stats {
-  font-size: 12px;
-  opacity: 0.8;
-  text-align: right;
-  color: white;
-}
-
-/* Milestones */
-.milestones-section {
-  margin-bottom: 40px;
-}
-
-.milestones-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.milestone-item {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 16px;
-  padding: 16px;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.milestone-item.completed {
-  background: linear-gradient(135deg, rgba(102,126,234,0.2), rgba(118,75,162,0.2));
-  border-color: #667eea;
-}
-
-.milestone-item.locked {
-  opacity: 0.5;
-}
-
-.milestone-icon {
-  font-size: 32px;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.milestone-name {
-  font-size: 14px;
-  color: white;
-}
-
 /* Motivation Card */
 .motivation-card {
   background: linear-gradient(135deg, #667eea, #764ba2);
@@ -1303,22 +1265,6 @@
 .to-orange-600 { --tw-gradient-to: #ea580c; }
 .from-red-400 { --tw-gradient-from: #f87171; }
 .to-red-600 { --tw-gradient-to: #dc2626; }
-
-/* New color gradients for categories */
-.from-blue-500 { --tw-gradient-from: #3b82f6; }
-.to-blue-700 { --tw-gradient-to: #1d4ed8; }
-.from-purple-500 { --tw-gradient-from: #a855f7; }
-.to-purple-700 { --tw-gradient-to: #6b21a8; }
-.from-green-500 { --tw-gradient-from: #22c55e; }
-.to-green-700 { --tw-gradient-to: #15803d; }
-.from-cyan-500 { --tw-gradient-from: #06b6d4; }
-.to-cyan-700 { --tw-gradient-to: #0e7490; }
-.from-yellow-500 { --tw-gradient-from: #eab308; }
-.to-yellow-700 { --tw-gradient-to: #a16207; }
-.from-indigo-500 { --tw-gradient-from: #6366f1; }
-.to-indigo-700 { --tw-gradient-to: #4338ca; }
-.from-red-500 { --tw-gradient-from: #ef4444; }
-.to-red-700 { --tw-gradient-to: #b91c1c; }
 
 /* Background gradient animation */
 .bg-gradient-to-br {
