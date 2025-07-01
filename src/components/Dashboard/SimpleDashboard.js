@@ -1,23 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, Circle, Settings, Plus, X, Briefcase, Heart, Calendar, Clock } from 'lucide-react';
 import './SimpleDashboard.css';
 
-// Configuration for each category
-const CATEGORIES = {
-  WORK: {
+// Configuration for each category - Removed unused CATEGORIES
+const CATEGORY_CONFIG = {
+  work: {
     id: 'work',
     name: 'Trabajo',
     icon: <Briefcase size={20} />,
-    color: 'from-blue-500 to-blue-600',
-    projects: []
+    color: 'from-blue-500 to-blue-600'
   },
-  PERSONAL: {
+  personal: {
     id: 'personal', 
     name: 'Personal',
     icon: <Heart size={20} />,
-    color: 'from-purple-500 to-purple-600',
-    projects: []
+    color: 'from-purple-500 to-purple-600'
   }
 };
 
@@ -33,15 +30,7 @@ const DEFAULT_PROJECTS = {
   ]
 };
 
-// Task frequencies
-const TASK_FREQUENCIES = {
-  DAILY: 'daily',
-  WEEKEND: 'weekend',
-  MONTHLY: 'monthly'
-};
-
 const SimpleDashboard = () => {
-  const { currentUser } = useAuth();
   const [userName, setUserName] = useState('');
   const [projects, setProjects] = useState(DEFAULT_PROJECTS);
   const [tasks, setTasks] = useState({});
