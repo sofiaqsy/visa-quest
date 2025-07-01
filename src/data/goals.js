@@ -335,16 +335,19 @@ export const getContextualTips = (category, timeContext) => {
   };
 
   const categoryTips = tips[category] || tips[GOAL_CATEGORIES.PERSONAL];
-  const contextTip = categoryTips[timeContext] || categoryTips.MORNING;
+  const contextTip = categoryTips[timeContext] || categoryTips.MORNING || {
+    title: "💡 Tip del momento",
+    content: "Cada pequeño paso cuenta. Sigue adelante con determinación."
+  };
   
   return {
-    id: `tip_${category}_${timeContext}`,
+    id: `tip_${category}_${timeContext}_${Date.now()}`,
     ...contextTip,
     color: 'from-gradient-to-gradient'
   };
 };
 
-// Smart task distribution algorithm
+// Smart task distribution algorithm - SIMPLIFIED VERSION
 export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferences = {}) => {
   const timeContext = getCurrentTimeContext();
   const isWorkTime = isWorkHours();
@@ -353,16 +356,38 @@ export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferenc
   
   // Collect all tasks from all active goals
   allGoals.forEach(goal => {
-    if (goal.active && goal.tasks) {
+    if (goal.active && goal.tasks && goal.tasks.length > 0) {
       eligibleTasks.push(...goal.tasks);
     }
   });
   
+  // If no tasks from goals, use default tasks
+  if (eligibleTasks.length === 0) {
+    console.log('No tasks from goals, using defaults');
+    // Add some default tasks based on time
+    if (isWorkTime) {
+      eligibleTasks.push(...WORK_TASKS.slice(0, 3));
+    }
+    eligibleTasks.push(...PERSONAL_TASKS.slice(0, 3));
+    eligibleTasks.push(...MICRO_TASKS.slice(0, 2));
+  }
+  
   // Filter out completed tasks
   eligibleTasks = eligibleTasks.filter(task => !completedTasks.includes(task.id));
   
-  // Apply time context filtering
-  eligibleTasks = eligibleTasks.filter(task => {
+  // If all tasks are completed, show congratulations
+  if (eligibleTasks.length === 0) {
+    return [{
+      type: 'tip',
+      id: 'all_done_tip',
+      title: "🎉 ¡Felicidades!",
+      content: "Has completado todas tus tareas por hoy. Descansa y disfruta tu tiempo libre.",
+      color: 'from-green-400 to-green-600'
+    }];
+  }
+  
+  // Apply time context filtering (but keep at least some tasks)
+  let timeFilteredTasks = eligibleTasks.filter(task => {
     // If task has preferred times, check if current time matches
     if (task.preferredTime && task.preferredTime.length > 0) {
       return task.preferredTime.includes(timeContext);
@@ -385,79 +410,48 @@ export const getSmartTaskDistribution = (allGoals, completedTasks, userPreferenc
     return false;
   });
   
-  // Sort by priority and deadline
-  eligibleTasks.sort((a, b) => {
-    // Urgent tasks first
-    if (a.priority === PRIORITY_LEVELS.URGENT && b.priority !== PRIORITY_LEVELS.URGENT) return -1;
-    if (b.priority === PRIORITY_LEVELS.URGENT && a.priority !== PRIORITY_LEVELS.URGENT) return 1;
-    
-    // Then by deadline (if exists)
-    if (a.deadline && b.deadline) {
-      return new Date(a.deadline) - new Date(b.deadline);
-    }
-    
-    // Then by priority
+  // If filtering removed all tasks, use unfiltered list
+  if (timeFilteredTasks.length === 0) {
+    timeFilteredTasks = eligibleTasks;
+  }
+  
+  // Sort by priority
+  timeFilteredTasks.sort((a, b) => {
     const priorityOrder = {
       [PRIORITY_LEVELS.URGENT]: 0,
       [PRIORITY_LEVELS.HIGH]: 1,
       [PRIORITY_LEVELS.MEDIUM]: 2,
-      [PRIORITY_LEVELS.LOW]: 3
+      [PRIORITY_LEVELS.LOW]: 3,
+      undefined: 4
     };
     
-    return priorityOrder[a.priority] - priorityOrder[b.priority];
+    return (priorityOrder[a.priority] || 4) - (priorityOrder[b.priority] || 4);
   });
   
-  // Mix in micro-tasks between heavy tasks
-  const finalTaskList = [];
-  let heavyTaskCount = 0;
+  // Take a reasonable number of tasks
+  const finalTasks = timeFilteredTasks.slice(0, 8);
   
-  eligibleTasks.forEach(task => {
-    finalTaskList.push(task);
-    
-    if (!task.microTask) {
-      heavyTaskCount++;
-      
-      // Add a micro-task every 2 heavy tasks
-      if (heavyTaskCount % 2 === 0) {
-        const availableMicroTasks = MICRO_TASKS.filter(
-          micro => !completedTasks.includes(micro.id)
-        );
-        
-        if (availableMicroTasks.length > 0) {
-          const randomMicro = availableMicroTasks[
-            Math.floor(Math.random() * availableMicroTasks.length)
-          ];
-          finalTaskList.push(randomMicro);
-        }
-      }
-    }
-  });
-  
-  // Add contextual tips
-  const tips = [];
-  const categories = [...new Set(finalTaskList.map(t => t.category))];
-  
-  categories.forEach(category => {
-    tips.push(getContextualTips(category, timeContext));
-  });
-  
-  // Interleave tips with tasks
+  // Add some tips
   const result = [];
-  let tipIndex = 0;
+  const categories = [...new Set(finalTasks.map(t => t.category))];
+  const tips = categories.map(cat => ({
+    type: 'tip',
+    ...getContextualTips(cat, timeContext)
+  }));
   
-  finalTaskList.forEach((task, index) => {
+  // Interleave tasks and tips
+  finalTasks.forEach((task, index) => {
     result.push(task);
-    
     // Add a tip every 3 tasks
-    if ((index + 1) % 3 === 0 && tipIndex < tips.length) {
-      result.push({
-        type: 'tip',
-        ...tips[tipIndex]
-      });
-      tipIndex++;
+    if ((index + 1) % 3 === 0 && tips.length > 0) {
+      result.push(tips.shift());
     }
   });
   
+  // Add remaining tips at the end
+  result.push(...tips);
+  
+  console.log('Generated task distribution:', result);
   return result;
 };
 
