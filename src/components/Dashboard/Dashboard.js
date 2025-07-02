@@ -75,88 +75,16 @@ const motivationalQuotes = [
   "¡Tu esfuerzo de hoy es tu visa de mañana! 🎯"
 ];
 
-// Header Component
-const DashboardHeader = ({ completedCount, totalTasks, userName, motivationalQuote }) => {
-  const progress = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
-  
-  return (
-    <div className="dashboard-header">
-      <div className="header-content">
-        <div className="user-greeting">
-          <h1>Hola {userName} 👋</h1>
-          <p className="progress-text">{completedCount} de {totalTasks} tareas • {progress}% completado</p>
-        </div>
-        <div className="motivation-quote">
-          <Sparkles size={16} />
-          <p>{motivationalQuote}</p>
-        </div>
-      </div>
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-    </div>
-  );
-};
-
-// Task Card Component
-const TaskCard = ({ task, onComplete, onSkip, isActive, style }) => {
-  const [showTips, setShowTips] = useState(false);
-  
-  return (
-    <div 
-      className={`task-card ${isActive ? 'active' : ''}`}
-      style={style}
-    >
-      <div className={`task-gradient ${task.color}`}>
-        <span className="task-emoji">{task.icon}</span>
-      </div>
-      
-      <div className="task-content">
-        <h2 className="task-title">{task.title}</h2>
-        <p className="task-description">{task.description}</p>
-        
-        <div className="task-meta">
-          <span className="task-time">
-            <Clock size={16} />
-            {task.time}
-          </span>
-        </div>
-        
-        {task.tips && (
-          <div className="tips-section">
-            <button 
-              className="tips-toggle"
-              onClick={() => setShowTips(!showTips)}
-            >
-              💡 {showTips ? 'Ocultar' : 'Ver'} consejos
-            </button>
-            
-            {showTips && (
-              <div className="tips-list">
-                {task.tips.map((tip, index) => (
-                  <div key={index} className="tip-item">
-                    <span className="tip-bullet">•</span>
-                    <span>{tip}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
 // Main Dashboard Component
 const Dashboard = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [completedTasks, setCompletedTasks] = useState([]);
   const [userName, setUserName] = useState('');
   const [dailyMood, setDailyMood] = useState(null);
-  const [showMoodSelector, setShowMoodSelector] = useState(true);
+  const [showMoodSelector, setShowMoodSelector] = useState(false);
   const [motivationalQuote, setMotivationalQuote] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showTips, setShowTips] = useState(false);
   
   // Touch handling
   const startY = useRef(0);
@@ -177,9 +105,10 @@ const Dashboard = () => {
     const moodDate = localStorage.getItem('visa-quest-mood-date');
     const today = new Date().toDateString();
     
-    if (savedMood && moodDate === today) {
+    if (!savedMood || moodDate !== today) {
+      setShowMoodSelector(true);
+    } else {
       setDailyMood(savedMood);
-      setShowMoodSelector(false);
     }
     
     // Set random motivational quote
@@ -229,6 +158,7 @@ const Dashboard = () => {
     if (isAnimating) return;
     
     setIsAnimating(true);
+    setShowTips(false);
     setTimeout(() => setIsAnimating(false), 300);
 
     if (direction === 'next') {
@@ -272,16 +202,28 @@ const Dashboard = () => {
 
   const currentTask = dailyTasks[currentIndex];
   const isCompleted = completedTasks.includes(currentTask.id);
+  const progress = Math.round((completedTasks.length / dailyTasks.length) * 100);
 
   return (
     <div className="dashboard-container">
-      <DashboardHeader 
-        completedCount={completedTasks.length}
-        totalTasks={dailyTasks.length}
-        userName={userName}
-        motivationalQuote={motivationalQuote}
-      />
+      {/* Header */}
+      <div className="dashboard-header">
+        <div className="header-content">
+          <div className="user-greeting">
+            <h1>Hola {userName} 👋</h1>
+            <p className="progress-text">{completedTasks.length} de {dailyTasks.length} tareas • {progress}% completado</p>
+          </div>
+          <div className="motivation-quote">
+            <Sparkles size={16} />
+            <p>{motivationalQuote}</p>
+          </div>
+        </div>
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+      </div>
       
+      {/* Mood Selector - Only show if needed */}
       {showMoodSelector && (
         <div className="mood-selector">
           <h3>¿Cómo te sientes hoy?</h3>
@@ -306,53 +248,93 @@ const Dashboard = () => {
         </div>
       )}
       
-      <div 
-        className="task-container"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <TaskCard 
-          task={currentTask}
-          onComplete={handleComplete}
-          onSkip={handleSkip}
-          isActive={true}
-          style={{
-            transform: `translateY(${-dragDistance * 0.3}px) scale(${1 - Math.abs(dragDistance) * 0.0005})`,
-            opacity: 1 - Math.abs(dragDistance) * 0.003
-          }}
-        />
-        
-        {/* Action Buttons */}
-        <div className="action-buttons">
-          <button className="action-btn secondary" onClick={handleSkip}>
-            <X size={24} />
-          </button>
-          
-          <button 
-            className={`action-btn primary ${isCompleted ? 'completed' : ''}`}
-            onClick={handleComplete}
-            disabled={isCompleted}
+      {/* Task Container - Only show if mood selected */}
+      {!showMoodSelector && (
+        <div 
+          className="task-container"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Task Card */}
+          <div 
+            className="task-card active"
+            style={{
+              transform: `translateY(${-dragDistance * 0.3}px) scale(${1 - Math.abs(dragDistance) * 0.0005})`,
+              opacity: 1 - Math.abs(dragDistance) * 0.003
+            }}
           >
-            {isCompleted ? <CheckCircle size={32} /> : <Heart size={32} />}
-          </button>
+            <div className={`task-gradient ${currentTask.color}`}>
+              <span className="task-emoji">{currentTask.icon}</span>
+            </div>
+            
+            <div className="task-content">
+              <h2 className="task-title">{currentTask.title}</h2>
+              <p className="task-description">{currentTask.description}</p>
+              
+              <div className="task-meta">
+                <span className="task-time">
+                  <Clock size={16} />
+                  {currentTask.time}
+                </span>
+              </div>
+              
+              {/* Tips Section */}
+              {currentTask.tips && (
+                <div className="tips-section">
+                  <button 
+                    className="tips-toggle"
+                    onClick={() => setShowTips(!showTips)}
+                  >
+                    💡 {showTips ? 'Ocultar' : 'Ver'} consejos
+                  </button>
+                  
+                  {showTips && (
+                    <div className="tips-list">
+                      {currentTask.tips.map((tip, index) => (
+                        <div key={index} className="tip-item">
+                          <span className="tip-bullet">•</span>
+                          <span>{tip}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
           
-          <button className="action-btn secondary">
-            <Share2 size={24} />
-          </button>
+          {/* Action Buttons */}
+          <div className="action-buttons">
+            <button className="action-btn secondary" onClick={handleSkip}>
+              <X size={24} />
+            </button>
+            
+            <button 
+              className={`action-btn primary ${isCompleted ? 'completed' : ''}`}
+              onClick={handleComplete}
+              disabled={isCompleted}
+            >
+              {isCompleted ? <CheckCircle size={32} /> : <Heart size={32} />}
+            </button>
+            
+            <button className="action-btn secondary">
+              <Share2 size={24} />
+            </button>
+          </div>
+          
+          {/* Navigation Dots */}
+          <div className="navigation-dots">
+            {dailyTasks.map((_, index) => (
+              <div 
+                key={index}
+                className={`dot ${index === currentIndex ? 'active' : ''} ${completedTasks.includes(dailyTasks[index].id) ? 'completed' : ''}`}
+                onClick={() => setCurrentIndex(index)}
+              />
+            ))}
+          </div>
         </div>
-        
-        {/* Navigation Dots */}
-        <div className="navigation-dots">
-          {dailyTasks.map((_, index) => (
-            <div 
-              key={index}
-              className={`dot ${index === currentIndex ? 'active' : ''} ${completedTasks.includes(dailyTasks[index].id) ? 'completed' : ''}`}
-              onClick={() => setCurrentIndex(index)}
-            />
-          ))}
-        </div>
-      </div>
+      )}
       
       {/* Reset Button */}
       <button className="reset-button" onClick={handleReset}>
