@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { progressService, analyticsService, scheduleService, goalsService } from '../../firebase/services';
-import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy, Settings, Bell } from 'lucide-react';
+import { Sparkles, RefreshCw, User, Home, Trophy, Settings } from 'lucide-react';
 import { 
   getSmartTaskDistribution, 
   getContextualGreeting,
@@ -18,22 +18,6 @@ import NotificationManager from '../Notifications/NotificationManager';
 import soundManager from '../../utils/soundManager';
 import { useTaskScheduling } from '../../hooks/useTaskScheduling';
 import './Dashboard.css';
-
-// Card types for different activities
-const CARD_TYPES = {
-  TASK: 'task',
-  TIP: 'tip'
-};
-
-// Category icons and colors
-const CATEGORY_CONFIG = {
-  [GOAL_CATEGORIES.VISA.id]: { icon: '🇨🇦', gradient: 'from-blue-400 to-blue-600' },
-  [GOAL_CATEGORIES.WORK.id]: { icon: '💼', gradient: 'from-purple-400 to-purple-600' },
-  [GOAL_CATEGORIES.PERSONAL.id]: { icon: '✨', gradient: 'from-pink-400 to-pink-600' },
-  [GOAL_CATEGORIES.HEALTH.id]: { icon: '💪', gradient: 'from-green-400 to-green-600' },
-  [GOAL_CATEGORIES.LEARNING.id]: { icon: '📚', gradient: 'from-yellow-400 to-yellow-600' },
-  [GOAL_CATEGORIES.FINANCE.id]: { icon: '💰', gradient: 'from-indigo-400 to-indigo-600' }
-};
 
 // Get all tasks for progress calculation  
 const getAllTasks = (activeGoals) => {
@@ -236,9 +220,7 @@ const Dashboard = () => {
   // Import task scheduling features
   const { 
     soundSettings, 
-    playAmbientSound,
-    isInFocusMode,
-    isBreakTime
+    playAmbientSound
   } = useTaskScheduling();
 
   const initializeDashboard = useCallback(async () => {
