@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { progressService, analyticsService } from '../../firebase/services';
+import { progressService, analyticsService, scheduleService, goalsService } from '../../firebase/services';
 import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy, Settings, Bell } from 'lucide-react';
 import { 
   getSmartTaskDistribution, 
@@ -329,6 +329,27 @@ const Dashboard = () => {
     const timeContext = getCurrentTimeContext();
     playAmbientSound(timeContext);
 
+    // Initialize Firebase collections
+    try {
+      // Initialize schedule in Firebase
+      await scheduleService.initializeUserSchedule(currentUser?.uid);
+      
+      // Initialize goals in Firebase
+      await goalsService.initializeUserGoals(currentUser?.uid);
+      
+      // Sync local goals to Firebase
+      if (savedGoals.length > 0) {
+        await goalsService.updateUserGoals(currentUser?.uid, {
+          activeGoals: savedGoals,
+          preferences: savedPreferences
+        });
+      }
+      
+      console.log('Firebase collections initialized');
+    } catch (error) {
+      console.error('Error initializing Firebase collections:', error);
+    }
+
     // Track dashboard view
     if (analyticsService && analyticsService.trackAction) {
       analyticsService.trackAction(currentUser?.uid, 'dashboard_view', { 
@@ -389,6 +410,18 @@ const Dashboard = () => {
       });
     }
 
+    // Update goal progress in Firebase
+    if (task) {
+      const goalId = activeGoals.find(g => g.category === task.category)?.id;
+      if (goalId) {
+        const categoryTasks = newCompleted.filter(id => {
+          const t = currentTasks.find(ct => ct.id === id);
+          return t && t.category === task.category;
+        });
+        await goalsService.updateGoalProgress(currentUser?.uid, goalId, categoryTasks.length);
+      }
+    }
+
     // Calculate progress for tracking
     const allTasks = getAllTasks(activeGoals);
     const progress = Math.round((newCompleted.length / allTasks.length) * 100);
@@ -405,10 +438,19 @@ const Dashboard = () => {
   };
 
   // Handle goals update
-  const handleGoalsUpdate = (updatedGoals) => {
+  const handleGoalsUpdate = async (updatedGoals) => {
     console.log('Updating goals:', updatedGoals);
     setActiveGoals(updatedGoals);
     localStorage.setItem('visa-quest-active-goals', JSON.stringify(updatedGoals));
+    
+    // Update in Firebase
+    try {
+      await goalsService.updateUserGoals(currentUser?.uid, {
+        activeGoals: updatedGoals
+      });
+    } catch (error) {
+      console.error('Error updating goals in Firebase:', error);
+    }
     
     // Track goal changes
     if (analyticsService && analyticsService.trackAction) {
