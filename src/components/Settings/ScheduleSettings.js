@@ -3,9 +3,7 @@ import {
   Clock, 
   Bell, 
   Volume2, 
-  Calendar, 
   Coffee, 
-  Target,
   Moon,
   Sun,
   Save,
@@ -62,19 +60,6 @@ const ScheduleSettings = () => {
       notifications: {
         ...prev.notifications,
         [field]: value
-      }
-    }));
-  };
-
-  const handleTaskPreferenceChange = (category, field, value) => {
-    setLocalSchedule(prev => ({
-      ...prev,
-      taskPreferences: {
-        ...prev.taskPreferences,
-        [category]: {
-          ...prev.taskPreferences[category],
-          [field]: value
-        }
       }
     }));
   };
