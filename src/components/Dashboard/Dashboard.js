@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { progressService, analyticsService, scheduleService, goalsService } from '../../firebase/services';
-import { Sparkles, RefreshCw, User, Home, Trophy, Settings } from 'lucide-react';
+import { Sparkles, RefreshCw, User, Home, Settings } from 'lucide-react';
 import { 
   getSmartTaskDistribution, 
   getContextualGreeting,
@@ -11,8 +11,7 @@ import {
   PERSONAL_TASKS,
   DEFAULT_USER_PREFERENCES
 } from '../../data/goals';
-import SimpleProgressView from './SimpleProgressView';
-import TaskScheduler from './TaskScheduler';
+import TaskList from './TaskList';
 import ScheduleSettings from '../Settings/ScheduleSettings';
 import NotificationManager from '../Notifications/NotificationManager';
 import soundManager from '../../utils/soundManager';
@@ -171,7 +170,7 @@ const DashboardHeader = ({ motivationalQuote }) => (
   </div>
 );
 
-// Navigation Tab Bar - Updated with settings
+// Navigation Tab Bar - Simplified without progress
 const TabBar = ({ activeTab, onTabChange }) => (
   <div className="tab-bar">
     <button 
@@ -180,13 +179,6 @@ const TabBar = ({ activeTab, onTabChange }) => (
     >
       <Home size={20} />
       <span>Tareas</span>
-    </button>
-    <button 
-      className={`tab-item ${activeTab === 'progress' ? 'active' : ''}`}
-      onClick={() => onTabChange('progress')}
-    >
-      <Trophy size={20} />
-      <span>Progreso</span>
     </button>
     <button 
       className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`}
@@ -419,30 +411,6 @@ const Dashboard = () => {
     }
   };
 
-  // Handle goals update
-  const handleGoalsUpdate = async (updatedGoals) => {
-    console.log('Updating goals:', updatedGoals);
-    setActiveGoals(updatedGoals);
-    localStorage.setItem('visa-quest-active-goals', JSON.stringify(updatedGoals));
-    
-    // Update in Firebase
-    try {
-      await goalsService.updateUserGoals(currentUser?.uid, {
-        activeGoals: updatedGoals
-      });
-    } catch (error) {
-      console.error('Error updating goals in Firebase:', error);
-    }
-    
-    // Track goal changes
-    if (analyticsService && analyticsService.trackAction) {
-      analyticsService.trackAction(currentUser?.uid, 'goals_updated', { 
-        totalGoals: updatedGoals.length,
-        activeGoals: updatedGoals.filter(g => g.active).length
-      });
-    }
-  };
-
   // Reset journey handler
   const handleResetJourney = () => {
     if (window.confirm('¿Estás segura que quieres reiniciar tu viaje? Esto borrará todo tu progreso local.')) {
@@ -499,17 +467,13 @@ const Dashboard = () => {
         
         {/* Content based on active tab */}
         {activeTab === 'home' ? (
-          /* Task Scheduler with Sound Integration */
-          <TaskScheduler 
-            tasks={currentTasks} 
-            onTaskComplete={handleTaskComplete}
-          />
-        ) : activeTab === 'progress' ? (
-          <SimpleProgressView 
+          /* TikTok-style Task List */
+          <TaskList 
+            tasks={currentTasks}
             completedTasks={completedTasks}
-            activeGoals={activeGoals}
+            onTaskComplete={handleTaskComplete}
             userName={userName}
-            onGoalsUpdate={handleGoalsUpdate}
+            dayNumber={dayNumber}
           />
         ) : activeTab === 'settings' ? (
           <ScheduleSettings />
