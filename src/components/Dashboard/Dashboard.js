@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { progressService, analyticsService } from '../../firebase/services';
-import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy } from 'lucide-react';
+import { CheckCircle, Circle, Sparkles, BookOpen, RefreshCw, User, Home, Trophy, Settings, Bell } from 'lucide-react';
 import { 
   getSmartTaskDistribution, 
   getContextualGreeting,
@@ -12,6 +12,11 @@ import {
   DEFAULT_USER_PREFERENCES
 } from '../../data/goals';
 import SimpleProgressView from './SimpleProgressView';
+import TaskScheduler from './TaskScheduler';
+import ScheduleSettings from '../Settings/ScheduleSettings';
+import NotificationManager from '../Notifications/NotificationManager';
+import soundManager from '../../utils/soundManager';
+import { useTaskScheduling } from '../../hooks/useTaskScheduling';
 import './Dashboard.css';
 
 // Card types for different activities
@@ -182,76 +187,7 @@ const DashboardHeader = ({ motivationalQuote }) => (
   </div>
 );
 
-// Task Card Component - Enhanced with category tag
-const TaskCard = ({ card, onComplete }) => {
-  const categoryConfig = CATEGORY_CONFIG[card.category] || CATEGORY_CONFIG[GOAL_CATEGORIES.PERSONAL.id];
-  const categoryInfo = Object.values(GOAL_CATEGORIES).find(cat => cat.id === card.category);
-  
-  return (
-    <div className={`card-content task-card ${card.completed ? 'completed' : ''}`}>
-      {/* Category tag */}
-      {card.category && categoryInfo && (
-        <div className={`task-category-tag ${card.category}`}>
-          <span>{categoryConfig.icon}</span>
-          <span>{categoryInfo.name}</span>
-        </div>
-      )}
-      
-      <div className="task-header">
-        <span className="task-icon">{card.icon}</span>
-        <span className="task-time">⏱️ {card.time}</span>
-      </div>
-      
-      <h2 className="task-title">{card.title}</h2>
-      <p className="task-description">{card.description}</p>
-      
-      {card.tips && (
-        <div className="task-tips">
-          <h4>💡 Tips rápidos:</h4>
-          <ul>
-            {card.tips.map((tip, index) => (
-              <li key={index}>{tip}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
-      <button 
-        className={`task-button ${card.completed ? 'completed' : ''}`}
-        onClick={() => onComplete(card.id)}
-        disabled={card.completed}
-      >
-        {card.completed ? (
-          <>
-            <CheckCircle size={20} />
-            <span>¡Completado!</span>
-          </>
-        ) : (
-          <>
-            <Circle size={20} />
-            <span>Marcar como completado</span>
-          </>
-        )}
-      </button>
-    </div>
-  );
-};
-
-// Tip Card Component
-const TipCard = ({ card }) => (
-  <div className="card-content tip-card">
-    <div className="tip-header">
-      <Sparkles size={24} />
-      <h2>{card.title}</h2>
-    </div>
-    <p className="tip-content">{card.content}</p>
-    <div className="tip-decoration">
-      <BookOpen size={48} className="tip-icon" />
-    </div>
-  </div>
-);
-
-// Navigation Tab Bar
+// Navigation Tab Bar - Updated with settings
 const TabBar = ({ activeTab, onTabChange }) => (
   <div className="tab-bar">
     <button 
@@ -269,6 +205,13 @@ const TabBar = ({ activeTab, onTabChange }) => (
       <span>Progreso</span>
     </button>
     <button 
+      className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`}
+      onClick={() => onTabChange('settings')}
+    >
+      <Settings size={20} />
+      <span>Ajustes</span>
+    </button>
+    <button 
       className={`tab-item ${activeTab === 'profile' ? 'active' : ''}`}
       onClick={() => onTabChange('profile')}
     >
@@ -283,30 +226,26 @@ const Dashboard = () => {
   const { currentUser } = useAuth();
   const [completedTasks, setCompletedTasks] = useState([]);
   const [dayNumber, setDayNumber] = useState(1);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [cards, setCards] = useState([]);
   const [motivationalQuote, setMotivationalQuote] = useState('');
   const [activeTab, setActiveTab] = useState('home');
   const [userName, setUserName] = useState('');
   const [activeGoals, setActiveGoals] = useState([]);
   const [userPreferences, setUserPreferences] = useState(DEFAULT_USER_PREFERENCES);
-  const [isChangingTab, setIsChangingTab] = useState(false);
-  const [savedCardIndex, setSavedCardIndex] = useState(0); // Store card position when leaving home tab
-  const [wheelListenerActive, setWheelListenerActive] = useState(false);
+  const [currentTasks, setCurrentTasks] = useState([]);
   
-  // Enhanced touch handling with velocity tracking
-  const [touchStart, setTouchStart] = useState(0);
-  const [touchEnd, setTouchEnd] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  
-  const containerRef = useRef(null);
-  const velocityRef = useRef(0);
-  const lastTouchRef = useRef(0);
+  // Import task scheduling features
+  const { 
+    soundSettings, 
+    playAmbientSound,
+    isInFocusMode,
+    isBreakTime
+  } = useTaskScheduling();
 
   const initializeDashboard = useCallback(async () => {
     console.log('Initializing dashboard...');
+    
+    // Initialize sound manager
+    await soundManager.init();
     
     // Get user name
     const savedName = localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Amiga';
@@ -385,6 +324,10 @@ const Dashboard = () => {
 
     // Set contextual greeting
     setMotivationalQuote(getContextualGreeting());
+    
+    // Play ambient sound based on time
+    const timeContext = getCurrentTimeContext();
+    playAmbientSound(timeContext);
 
     // Track dashboard view
     if (analyticsService && analyticsService.trackAction) {
@@ -393,14 +336,14 @@ const Dashboard = () => {
         activeGoals: savedGoals.length || 3
       });
     }
-  }, [currentUser]);
+  }, [currentUser, playAmbientSound]);
 
   useEffect(() => {
     initializeDashboard();
   }, [initializeDashboard]);
 
   useEffect(() => {
-    // Generate cards using smart distribution
+    // Generate tasks using smart distribution
     if (activeGoals.length > 0) {
       const distributedTasks = getSmartTaskDistribution(
         activeGoals,
@@ -408,26 +351,7 @@ const Dashboard = () => {
         userPreferences
       );
       
-      // Convert to card format
-      const formattedCards = distributedTasks.map(item => {
-        if (item.type === 'tip') {
-          return {
-            type: CARD_TYPES.TIP,
-            ...item
-          };
-        }
-        
-        const categoryConfig = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG[GOAL_CATEGORIES.PERSONAL.id];
-        
-        return {
-          type: CARD_TYPES.TASK,
-          ...item,
-          color: item.color || categoryConfig.gradient,
-          completed: completedTasks.includes(item.id)
-        };
-      });
-      
-      setCards(formattedCards);
+      setCurrentTasks(distributedTasks);
     }
   }, [activeGoals, completedTasks, userPreferences]);
 
@@ -443,13 +367,18 @@ const Dashboard = () => {
   const handleTaskComplete = async (taskId) => {
     if (completedTasks.includes(taskId)) return;
 
+    // Play completion sound
+    if (soundSettings.enabled) {
+      await soundManager.playTaskComplete();
+    }
+
     // Update completed tasks
     const newCompleted = [...completedTasks, taskId];
     setCompletedTasks(newCompleted);
     localStorage.setItem('visa-quest-completed-tasks', JSON.stringify(newCompleted));
 
     // Save to Firebase
-    const task = cards.find(c => c.id === taskId);
+    const task = currentTasks.find(t => t.id === taskId);
     if (task && progressService && progressService.completeTask) {
       await progressService.completeTask(currentUser?.uid, {
         taskId,
@@ -490,126 +419,6 @@ const Dashboard = () => {
     }
   };
 
-  // Enhanced card navigation with smooth animations
-  const navigateToCard = useCallback((newIndex, velocity = 0) => {
-    if (isTransitioning || cards.length === 0 || activeTab !== 'home') return;
-    
-    // Handle infinite scroll without jumps
-    let targetIndex = newIndex;
-    
-    // If going past the end, wrap to beginning
-    if (targetIndex >= cards.length) {
-      targetIndex = 0;
-    } 
-    // If going before the beginning, wrap to end
-    else if (targetIndex < 0) {
-      targetIndex = cards.length - 1;
-    }
-    
-    setIsTransitioning(true);
-    setCurrentCardIndex(targetIndex);
-    setDragOffset(0);
-    
-    // Calculate transition duration based on velocity
-    const baseTransitionTime = 400;
-    const velocityFactor = Math.max(0.2, 1 - Math.abs(velocity) / 1000);
-    const transitionDuration = baseTransitionTime * velocityFactor;
-    
-    // Update CSS transition duration dynamically
-    if (containerRef.current) {
-      const cardElements = containerRef.current.querySelectorAll('.card-container');
-      cardElements.forEach(card => {
-        card.style.transition = `transform ${transitionDuration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity ${transitionDuration}ms ease`;
-      });
-    }
-    
-    setTimeout(() => {
-      setIsTransitioning(false);
-    }, transitionDuration);
-  }, [cards.length, isTransitioning, activeTab]);
-
-  // Enhanced touch handlers with velocity tracking
-  const handleTouchStart = (e) => {
-    if (activeTab !== 'home') return;
-    
-    setTouchStart(e.touches[0].clientY);
-    setIsDragging(true);
-    lastTouchRef.current = e.touches[0].clientY;
-    velocityRef.current = 0;
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isDragging || activeTab !== 'home') return;
-    
-    const currentTouch = e.touches[0].clientY;
-    setTouchEnd(currentTouch);
-    
-    // Calculate drag offset for visual feedback
-    const offset = currentTouch - touchStart;
-    setDragOffset(offset);
-    
-    // Calculate velocity
-    const deltaY = currentTouch - lastTouchRef.current;
-    const deltaTime = 16; // Approximate frame time
-    velocityRef.current = deltaY / deltaTime * 1000; // pixels per second
-    lastTouchRef.current = currentTouch;
-    
-    // Prevent default scrolling
-    e.preventDefault();
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !isDragging || activeTab !== 'home') return;
-    
-    setIsDragging(false);
-    
-    const distance = touchStart - touchEnd;
-    const velocity = velocityRef.current;
-    
-    // Determine swipe threshold based on distance and velocity
-    const minSwipeDistance = 30;
-    const minSwipeVelocity = 200;
-    
-    const isSwipeUp = distance > minSwipeDistance || velocity < -minSwipeVelocity;
-    const isSwipeDown = distance < -minSwipeDistance || velocity > minSwipeVelocity;
-    
-    if (isSwipeUp && cards.length > 0) {
-      navigateToCard(currentCardIndex + 1, velocity);
-    } else if (isSwipeDown && cards.length > 0) {
-      navigateToCard(currentCardIndex - 1, velocity);
-    } else {
-      // Snap back to current card
-      setDragOffset(0);
-    }
-    
-    // Reset touch positions
-    setTouchStart(0);
-    setTouchEnd(0);
-    velocityRef.current = 0;
-  };
-
-  // Mouse wheel handler with strict tab checking
-  const handleWheel = useCallback((e) => {
-    // Absolutely ensure we're in home tab
-    if (activeTab !== 'home' || !wheelListenerActive) {
-      return;
-    }
-    
-    if (cards.length === 0 || isTransitioning) return;
-    
-    // Only handle wheel events when we're sure we're in home tab
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const velocity = e.deltaY * 10;
-    
-    if (e.deltaY > 0) {
-      navigateToCard(currentCardIndex + 1, velocity);
-    } else if (e.deltaY < 0) {
-      navigateToCard(currentCardIndex - 1, velocity);
-    }
-  }, [activeTab, cards.length, isTransitioning, currentCardIndex, navigateToCard, wheelListenerActive]);
-
   // Reset journey handler
   const handleResetJourney = () => {
     if (window.confirm('¿Estás segura que quieres reiniciar tu viaje? Esto borrará todo tu progreso local.')) {
@@ -621,97 +430,17 @@ const Dashboard = () => {
       localStorage.removeItem('visa-quest-start-date');
       localStorage.removeItem('visa-quest-active-goals');
       localStorage.removeItem('visa-quest-preferences');
+      localStorage.removeItem('visa-quest-sound-settings');
       
       // Reload the page to start fresh
       window.location.href = '/';
     }
   };
 
-  // Render card based on type
-  const renderCard = (card) => {
-    switch (card.type) {
-      case CARD_TYPES.TASK:
-        return <TaskCard card={card} onComplete={handleTaskComplete} />;
-      case CARD_TYPES.TIP:
-        return <TipCard card={card} />;
-      default:
-        return null;
-    }
-  };
-
-  // Handle tab change - Modified to keep card position and control wheel listener
+  // Handle tab change
   const handleTabChange = (tab) => {
     console.log('Changing tab to:', tab);
-    
-    // Prevent multiple rapid tab changes
-    if (isChangingTab) return;
-    
-    setIsChangingTab(true);
-    
-    // Save current card index when leaving home tab
-    if (activeTab === 'home' && tab !== 'home') {
-      setSavedCardIndex(currentCardIndex);
-      setWheelListenerActive(false); // Disable wheel listener
-    }
-    
     setActiveTab(tab);
-    
-    // Restore card position when returning to home
-    if (tab === 'home') {
-      setWheelListenerActive(true); // Enable wheel listener
-      
-      // Reset states immediately
-      setDragOffset(0);
-      setIsTransitioning(false);
-      setIsDragging(false);
-      setTouchStart(0);
-      setTouchEnd(0);
-      
-      // Use requestAnimationFrame for smoother reset
-      requestAnimationFrame(() => {
-        if (containerRef.current) {
-          const cardElements = containerRef.current.querySelectorAll('.card-container');
-          
-          // First, disable transitions
-          cardElements.forEach(card => {
-            card.style.transition = 'none';
-          });
-          
-          // Then reset positions to saved position
-          requestAnimationFrame(() => {
-            setCurrentCardIndex(savedCardIndex);
-            
-            cardElements.forEach((card, index) => {
-              const offset = (index - savedCardIndex) * 100;
-              
-              if (index === savedCardIndex) {
-                card.style.transform = 'translateY(0) scale(1)';
-                card.style.opacity = '1';
-              } else if (index < savedCardIndex) {
-                card.style.transform = `translateY(${offset}%) scale(0.95)`;
-                card.style.opacity = '0';
-              } else {
-                card.style.transform = `translateY(${offset}%) scale(0.95)`;
-                card.style.opacity = index === savedCardIndex + 1 ? '0.8' : '0';
-              }
-            });
-            
-            // Re-enable transitions after a small delay
-            requestAnimationFrame(() => {
-              cardElements.forEach(card => {
-                card.style.transition = '';
-              });
-              setIsChangingTab(false);
-            });
-          });
-        } else {
-          setCurrentCardIndex(savedCardIndex);
-          setIsChangingTab(false);
-        }
-      });
-    } else {
-      setIsChangingTab(false);
-    }
     
     // Track tab change
     if (analyticsService && analyticsService.trackAction) {
@@ -719,64 +448,20 @@ const Dashboard = () => {
     }
   };
 
-  // Calculate card transform with drag offset
-  const getCardTransform = (index) => {
-    const baseTransform = (index - currentCardIndex) * 100;
-    const dragTransform = isDragging ? (dragOffset / window.innerHeight) * 100 : 0;
-    const rubberBandFactor = 0.3;
-    
-    // Apply rubber band effect at boundaries
-    if (currentCardIndex === 0 && dragTransform > 0) {
-      return baseTransform + (dragTransform * rubberBandFactor);
-    } else if (currentCardIndex === cards.length - 1 && dragTransform < 0) {
-      return baseTransform + (dragTransform * rubberBandFactor);
-    }
-    
-    return baseTransform + dragTransform;
-  };
-
-  // Set initial wheel listener state
-  useEffect(() => {
-    setWheelListenerActive(activeTab === 'home');
-  }, [activeTab]);
-
-  // Add event listener only for the content area with strict checking
-  useEffect(() => {
-    const contentElement = containerRef.current;
-    
-    if (contentElement && activeTab === 'home' && wheelListenerActive) {
-      const wheelHandler = (e) => {
-        if (activeTab === 'home' && wheelListenerActive) {
-          handleWheel(e);
-        }
-      };
-      
-      // Add passive: false to allow preventDefault
-      contentElement.addEventListener('wheel', wheelHandler, { passive: false });
-      
-      return () => {
-        contentElement.removeEventListener('wheel', wheelHandler);
-      };
-    }
-  }, [handleWheel, activeTab, wheelListenerActive]);
-
   return (
     <div className="dashboard-tiktok-container">
       {/* Fixed Header with Motivation */}
       <DashboardHeader motivationalQuote={motivationalQuote} />
       
+      {/* Show notification manager on home tab */}
+      {activeTab === 'home' && (
+        <div className="px-4 mt-2">
+          <NotificationManager />
+        </div>
+      )}
+      
       {/* Main Content Area */}
-      <div 
-        className={`dashboard-content ${activeTab !== 'home' ? 'tab-active' : ''}`}
-        ref={containerRef}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{ 
-          overflow: activeTab === 'home' ? 'hidden' : 'auto',
-          touchAction: activeTab === 'home' ? 'none' : 'auto'
-        }}
-      >
+      <div className="dashboard-content">
         {/* Reset Button - Only show on home tab */}
         {activeTab === 'home' && (
           <button 
@@ -790,86 +475,11 @@ const Dashboard = () => {
         
         {/* Content based on active tab */}
         {activeTab === 'home' ? (
-          /* Card Stack */
-          <div className="cards-wrapper">
-            {cards.length > 0 ? (
-              cards.map((card, index) => {
-                const isActive = index === currentCardIndex;
-                const isPassed = index < currentCardIndex;
-                const isNext = index === currentCardIndex + 1;
-                const isPrev = index === currentCardIndex - 1;
-                const isVisible = Math.abs(index - currentCardIndex) <= 2;
-                
-                // Special handling for wrapping
-                const isLastCard = currentCardIndex === cards.length - 1;
-                const isFirstCard = currentCardIndex === 0;
-                
-                // Show first card as next when on last card
-                if (isLastCard && index === 0) {
-                  return (
-                    <div
-                      key={`${card.id}-${index}`}
-                      className="card-container next"
-                      style={{
-                        transform: `translateY(100%)`,
-                        opacity: 0.8,
-                        pointerEvents: 'none',
-                        transition: isDragging ? 'none' : undefined
-                      }}
-                    >
-                      <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-                        {renderCard(card)}
-                      </div>
-                    </div>
-                  );
-                }
-                
-                // Show last card as prev when on first card
-                if (isFirstCard && index === cards.length - 1) {
-                  return (
-                    <div
-                      key={`${card.id}-${index}`}
-                      className="card-container prev"
-                      style={{
-                        transform: `translateY(-100%)`,
-                        opacity: 0.8,
-                        pointerEvents: 'none',
-                        transition: isDragging ? 'none' : undefined
-                      }}
-                    >
-                      <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-                        {renderCard(card)}
-                      </div>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div
-                    key={`${card.id}-${index}`}
-                    className={`card-container ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''} ${isNext ? 'next' : ''} ${isPrev ? 'prev' : ''}`}
-                    style={{
-                      transform: `translateY(${getCardTransform(index)}%)`,
-                      opacity: isVisible ? (isActive ? 1 : (isNext || isPrev ? 0.8 : 0)) : 0,
-                      pointerEvents: isActive ? 'auto' : 'none',
-                      transition: isDragging || isChangingTab ? 'none' : undefined,
-                      zIndex: isActive ? 10 : (isNext ? 5 : 1)
-                    }}
-                  >
-                    <div className={`card-gradient bg-gradient-to-br ${card.color || 'from-blue-400 to-purple-600'}`}>
-                      {renderCard(card)}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              // Loading state
-              <div className="loading-state">
-                <Sparkles size={48} className="loading-icon" />
-                <p>Preparando tus tareas contextuales...</p>
-              </div>
-            )}
-          </div>
+          /* Task Scheduler with Sound Integration */
+          <TaskScheduler 
+            tasks={currentTasks} 
+            onTaskComplete={handleTaskComplete}
+          />
         ) : activeTab === 'progress' ? (
           <SimpleProgressView 
             completedTasks={completedTasks}
@@ -877,6 +487,8 @@ const Dashboard = () => {
             userName={userName}
             onGoalsUpdate={handleGoalsUpdate}
           />
+        ) : activeTab === 'settings' ? (
+          <ScheduleSettings />
         ) : (
           /* Profile tab placeholder */
           <div className="profile-placeholder">
