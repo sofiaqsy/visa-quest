@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Clock, 
   CheckCircle, 
-  XCircle, 
   Volume2, 
   VolumeX,
   Calendar,
@@ -20,7 +19,6 @@ import soundManager from '../../utils/soundManager';
 const TaskScheduler = ({ tasks, onTaskComplete }) => {
   const {
     schedule,
-    scheduledTasks,
     soundSettings,
     scheduleTask,
     completeScheduledTask,
