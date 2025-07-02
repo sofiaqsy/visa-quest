@@ -17,6 +17,10 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 
+// Import new services
+import scheduleService from './services/scheduleService';
+import goalsService from './services/goalsService';
+
 // Generate a unique device ID if not exists
 const getDeviceId = () => {
   let deviceId = localStorage.getItem('visa-quest-device-id');
@@ -534,3 +538,6 @@ export const analyticsService = {
     }
   }
 };
+
+// Export new services
+export { scheduleService, goalsService };
