@@ -81,45 +81,6 @@ const NotificationManager = () => {
     }
   };
 
-  const scheduleTaskNotification = (task, reminderTime) => {
-    if (permission !== 'granted' || !('serviceWorker' in navigator)) return;
-
-    const notificationTime = new Date(reminderTime);
-    const now = new Date();
-    
-    if (notificationTime <= now) return;
-
-    // Send to service worker
-    navigator.serviceWorker.controller?.postMessage({
-      type: 'SCHEDULE_NOTIFICATION',
-      notificationId: `task-${task.id}-${notificationTime.getTime()}`,
-      notificationData: {
-        body: `Recordatorio: ${task.title} - ${task.description}`,
-        taskId: task.id,
-        taskTitle: task.title,
-        icon: task.icon,
-        actions: [
-          {
-            action: 'view',
-            title: 'Ver Tarea',
-            icon: '/icon-192x192.png'
-          },
-          {
-            action: 'complete',
-            title: 'Completar',
-            icon: '/icon-192x192.png'
-          },
-          {
-            action: 'snooze',
-            title: 'Posponer',
-            icon: '/icon-192x192.png'
-          }
-        ]
-      },
-      scheduledTime: notificationTime.getTime()
-    });
-  };
-
   if (!isSupported) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -206,8 +167,36 @@ const NotificationManager = () => {
 
 // Export helper function for other components
 export const scheduleNotification = (task, reminderTime) => {
-  const manager = new NotificationManager();
-  manager.scheduleTaskNotification(task, reminderTime);
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SCHEDULE_NOTIFICATION',
+      notificationId: `task-${task.id}-${reminderTime.getTime()}`,
+      notificationData: {
+        body: `Recordatorio: ${task.title} - ${task.description}`,
+        taskId: task.id,
+        taskTitle: task.title,
+        icon: task.icon,
+        actions: [
+          {
+            action: 'view',
+            title: 'Ver Tarea',
+            icon: '/icon-192x192.png'
+          },
+          {
+            action: 'complete',
+            title: 'Completar',
+            icon: '/icon-192x192.png'
+          },
+          {
+            action: 'snooze',
+            title: 'Posponer',
+            icon: '/icon-192x192.png'
+          }
+        ]
+      },
+      scheduledTime: reminderTime.getTime()
+    });
+  }
 };
 
 export default NotificationManager;
