@@ -6,8 +6,7 @@ import {
   CONTEXTUAL_TIPS,
   SPECIAL_TASKS,
   DEFAULT_USER_PREFERENCES,
-  getTimeContextByHour,
-  getCategoryById
+  getTimeContextByHour
 } from '../config/config';
 
 // Get current time context
