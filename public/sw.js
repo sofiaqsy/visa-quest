@@ -1,4 +1,4 @@
-const CACHE_NAME = 'visa-quest-v1.0.0';
+const CACHE_NAME = 'visa-quest-v1.1.0';
 const STATIC_CACHE_URLS = [
   '/',
   '/static/js/bundle.js',
@@ -6,6 +6,9 @@ const STATIC_CACHE_URLS = [
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap'
 ];
+
+// Scheduled notifications storage
+const scheduledNotifications = new Map();
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
@@ -94,8 +97,13 @@ self.addEventListener('sync', (event) => {
   
   if (event.tag === 'background-sync') {
     event.waitUntil(
-      // Here you could sync offline data when connection is restored
       syncOfflineData()
+    );
+  }
+  
+  if (event.tag === 'check-scheduled-notifications') {
+    event.waitUntil(
+      checkAndShowScheduledNotifications()
     );
   }
 });
@@ -104,38 +112,84 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('push', (event) => {
   console.log('VisaQuest SW: Push notification received');
   
-  const options = {
-    body: event.data ? event.data.text() : '¡Tienes nuevas tareas pendientes!',
+  let notificationData = {
+    title: 'VisaQuest',
+    body: '¡Tienes nuevas tareas pendientes!',
     icon: '/icon-192x192.png',
     badge: '/icon-192x192.png',
-    vibrate: [200, 100, 200],
     tag: 'visa-quest-notification',
+    timestamp: Date.now(),
+    data: {}
+  };
+  
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      notificationData = {
+        ...notificationData,
+        ...data
+      };
+    } catch (e) {
+      notificationData.body = event.data.text();
+    }
+  }
+  
+  const options = {
+    body: notificationData.body,
+    icon: notificationData.icon,
+    badge: notificationData.badge,
+    vibrate: [200, 100, 200],
+    tag: notificationData.tag,
+    timestamp: notificationData.timestamp,
+    data: notificationData.data,
+    requireInteraction: true,
     actions: [
       {
         action: 'view',
-        title: 'Ver Tareas',
+        title: 'Ver Tarea',
         icon: '/icon-192x192.png'
       },
       {
-        action: 'dismiss',
-        title: 'Cerrar'
+        action: 'complete',
+        title: 'Completar',
+        icon: '/icon-192x192.png'
+      },
+      {
+        action: 'snooze',
+        title: 'Posponer 10min',
+        icon: '/icon-192x192.png'
       }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification('VisaQuest', options)
+    self.registration.showNotification(notificationData.title, options)
   );
 });
 
 // Notification click handler
 self.addEventListener('notificationclick', (event) => {
-  console.log('VisaQuest SW: Notification clicked');
+  console.log('VisaQuest SW: Notification clicked', event.action);
   
   event.notification.close();
 
   if (event.action === 'view') {
-    // Open the app when notification is clicked
+    // Open the app to the specific task
+    event.waitUntil(
+      clients.openWindow(`/dashboard?task=${event.notification.data.taskId}`)
+    );
+  } else if (event.action === 'complete') {
+    // Mark task as complete
+    event.waitUntil(
+      completeTaskInBackground(event.notification.data.taskId)
+    );
+  } else if (event.action === 'snooze') {
+    // Snooze for 10 minutes
+    event.waitUntil(
+      snoozeNotification(event.notification.data, 10)
+    );
+  } else {
+    // Default: open app
     event.waitUntil(
       clients.openWindow('/')
     );
@@ -145,18 +199,110 @@ self.addEventListener('notificationclick', (event) => {
 // Helper function for background sync
 async function syncOfflineData() {
   try {
-    // Here you would sync any offline data
-    // For example: user progress, completed tasks, etc.
     console.log('VisaQuest SW: Syncing offline data...');
     
-    // Example: Get offline data from IndexedDB and sync to server
-    // const offlineData = await getOfflineData();
-    // await syncToServer(offlineData);
+    // Get all clients
+    const allClients = await clients.matchAll();
+    
+    // Send sync message to all clients
+    allClients.forEach(client => {
+      client.postMessage({
+        type: 'BACKGROUND_SYNC',
+        timestamp: Date.now()
+      });
+    });
     
     return Promise.resolve();
   } catch (error) {
     console.error('VisaQuest SW: Sync failed:', error);
     return Promise.reject(error);
+  }
+}
+
+// Complete task in background
+async function completeTaskInBackground(taskId) {
+  try {
+    // Send message to client to complete task
+    const allClients = await clients.matchAll();
+    
+    allClients.forEach(client => {
+      client.postMessage({
+        type: 'COMPLETE_TASK',
+        taskId: taskId,
+        timestamp: Date.now()
+      });
+    });
+    
+    // Show success notification
+    await self.registration.showNotification('VisaQuest', {
+      body: '¡Tarea completada! 🎉',
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      vibrate: [100, 50, 100],
+      tag: 'task-complete',
+      requireInteraction: false
+    });
+  } catch (error) {
+    console.error('VisaQuest SW: Error completing task:', error);
+  }
+}
+
+// Snooze notification
+async function snoozeNotification(notificationData, minutes) {
+  try {
+    const snoozeTime = Date.now() + (minutes * 60 * 1000);
+    
+    // Store for later
+    scheduledNotifications.set(`snooze-${notificationData.taskId}`, {
+      ...notificationData,
+      scheduledTime: snoozeTime
+    });
+    
+    // Set timeout
+    setTimeout(() => {
+      self.registration.showNotification('VisaQuest - Recordatorio', {
+        body: notificationData.body || 'Es hora de completar tu tarea',
+        icon: '/icon-192x192.png',
+        badge: '/icon-192x192.png',
+        vibrate: [200, 100, 200],
+        tag: `snooze-${notificationData.taskId}`,
+        data: notificationData
+      });
+      
+      scheduledNotifications.delete(`snooze-${notificationData.taskId}`);
+    }, minutes * 60 * 1000);
+    
+    // Show confirmation
+    await self.registration.showNotification('VisaQuest', {
+      body: `Recordatorio pospuesto ${minutes} minutos`,
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      vibrate: [100],
+      tag: 'snooze-confirm',
+      requireInteraction: false
+    });
+  } catch (error) {
+    console.error('VisaQuest SW: Error snoozing notification:', error);
+  }
+}
+
+// Check and show scheduled notifications
+async function checkAndShowScheduledNotifications() {
+  const now = Date.now();
+  
+  for (const [key, notification] of scheduledNotifications.entries()) {
+    if (notification.scheduledTime <= now) {
+      await self.registration.showNotification('VisaQuest - Recordatorio', {
+        body: notification.body,
+        icon: '/icon-192x192.png',
+        badge: '/icon-192x192.png',
+        vibrate: [200, 100, 200],
+        tag: key,
+        data: notification
+      });
+      
+      scheduledNotifications.delete(key);
+    }
   }
 }
 
@@ -170,5 +316,40 @@ self.addEventListener('message', (event) => {
   
   if (event.data && event.data.type === 'GET_VERSION') {
     event.ports[0].postMessage({ version: CACHE_NAME });
+  }
+  
+  if (event.data && event.data.type === 'SCHEDULE_NOTIFICATION') {
+    const { notificationId, notificationData, scheduledTime } = event.data;
+    scheduledNotifications.set(notificationId, {
+      ...notificationData,
+      scheduledTime
+    });
+    
+    // Calculate delay
+    const delay = scheduledTime - Date.now();
+    if (delay > 0) {
+      setTimeout(() => {
+        self.registration.showNotification('VisaQuest - Recordatorio', {
+          body: notificationData.body,
+          icon: '/icon-192x192.png',
+          badge: '/icon-192x192.png',
+          vibrate: [200, 100, 200],
+          tag: notificationId,
+          data: notificationData,
+          requireInteraction: true,
+          actions: notificationData.actions || []
+        });
+        
+        scheduledNotifications.delete(notificationId);
+      }, delay);
+    }
+  }
+});
+
+// Periodic background sync (if supported)
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'check-tasks') {
+    console.log('VisaQuest SW: Periodic sync - checking tasks');
+    event.waitUntil(checkAndShowScheduledNotifications());
   }
 });
