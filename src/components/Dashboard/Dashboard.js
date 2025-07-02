@@ -1,493 +1,376 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { progressService, analyticsService, scheduleService, goalsService } from '../../firebase/services';
-import { Sparkles, RefreshCw, User, Home, Settings } from 'lucide-react';
-import { 
-  getSmartTaskDistribution, 
-  getContextualGreeting,
-  getCurrentTimeContext,
-  GOAL_CATEGORIES,
-  WORK_TASKS,
-  PERSONAL_TASKS,
-  DEFAULT_USER_PREFERENCES
-} from '../../data/goals';
-import TaskList from './TaskList';
-import ScheduleSettings from '../Settings/ScheduleSettings';
-import NotificationManager from '../Notifications/NotificationManager';
-import soundManager from '../../utils/soundManager';
-import { useTaskScheduling } from '../../hooks/useTaskScheduling';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronUp, ChevronDown, Heart, CheckCircle, X, MessageCircle, Share2, Sparkles, RefreshCw, Clock } from 'lucide-react';
 import './Dashboard.css';
 
-// Get all tasks for progress calculation  
-const getAllTasks = (activeGoals) => {
-  const allTasks = [];
-  
-  activeGoals.forEach(goal => {
-    if (goal.tasks) {
-      allTasks.push(...goal.tasks);
-    }
-  });
-  
-  return allTasks;
-};
-
-// Daily tasks data organized by day (for visa goal)
-const getTasksByDay = (dayNumber) => {
-  const tasksByDay = {
-    1: [
-      { 
-        id: 'visa_1_1',
-        category: GOAL_CATEGORIES.VISA.id,
-        icon: '📋',
-        title: "Revisar requisitos de visa",
-        description: "Lee la lista completa de documentos necesarios para tu visa de turista",
-        time: "15 min",
-        emoji: '🔍',
-        color: 'from-blue-400 to-blue-600',
-        tips: ['Guarda la lista en tu teléfono', 'Marca los documentos que ya tienes'],
-        preferredTime: ['EVENING', 'NIGHT']
-      },
-      { 
-        id: 'visa_1_2',
-        category: GOAL_CATEGORIES.VISA.id,
-        icon: '🛂',
-        title: "Verificar pasaporte",
-        description: "Asegúrate que esté vigente por al menos 6 meses desde tu fecha de viaje",
-        time: "5 min",
-        emoji: '✅',
-        color: 'from-purple-400 to-purple-600',
-        tips: ['Revisa la fecha de vencimiento', 'Toma una foto clara de la página principal'],
-        preferredTime: ['LUNCH', 'EVENING']
-      },
-      { 
-        id: 'visa_1_3',
-        category: GOAL_CATEGORIES.VISA.id,
-        icon: '📁',
-        title: "Crear carpeta digital",
-        description: "Organiza tus documentos en Google Drive o Dropbox",
-        time: "10 min",
-        emoji: '☁️',
-        color: 'from-green-400 to-green-600',
-        tips: ['Crea subcarpetas por tipo de documento', 'Comparte el acceso con alguien de confianza'],
-        preferredTime: ['EVENING', 'NIGHT']
-      }
-    ],
-    2: [
-      { 
-        id: 'visa_2_1',
-        category: GOAL_CATEGORIES.VISA.id,
-        icon: '📸',
-        title: "Fotografías para visa",
-        description: "Toma fotos con fondo blanco según las especificaciones canadienses",
-        time: "20 min",
-        emoji: '🤳',
-        color: 'from-pink-400 to-pink-600',
-        tips: ['Fondo blanco sin sombras', 'Sin lentes ni accesorios', 'Expresión neutral'],
-        preferredTime: ['LUNCH', 'EVENING']
-      },
-      { 
-        id: 'visa_2_2',
-        category: GOAL_CATEGORIES.VISA.id,
-        icon: '💰',
-        title: "Estado de cuenta bancario",
-        description: "Solicita los últimos 6 meses en tu banco",
-        time: "30 min",
-        emoji: '🏦',
-        color: 'from-yellow-400 to-yellow-600',
-        tips: ['Puede ser digital o físico', 'Debe mostrar tu nombre completo', 'Saldo promedio importante'],
-        preferredTime: ['LUNCH']
-      },
-      { 
-        id: 'visa_2_3',
-        category: GOAL_CATEGORIES.VISA.id,
-        icon: '💼',
-        title: "Carta de empleo",
-        description: "Pide a RRHH una carta con tu salario, cargo y antigüedad",
-        time: "15 min",
-        emoji: '📄',
-        color: 'from-indigo-400 to-indigo-600',
-        tips: ['En papel membretado', 'Firmada y sellada', 'Mencione tu permiso de vacaciones'],
-        preferredTime: ['MORNING', 'AFTERNOON']
-      }
-    ],
-    3: [
-      {
-        id: 'visa_3_1',
-        category: GOAL_CATEGORIES.VISA.id,
-        icon: '✈️',
-        title: "Itinerario de vuelo",
-        description: "Reserva o cotiza tus vuelos de ida y vuelta",
-        time: "45 min",
-        emoji: '🎫',
-        color: 'from-cyan-400 to-cyan-600',
-        tips: ['No pagues hasta tener la visa', 'Guarda las cotizaciones en PDF', 'Fechas flexibles son mejores'],
-        preferredTime: ['EVENING', 'NIGHT']
-      },
-      {
-        id: 'visa_3_2',
-        category: GOAL_CATEGORIES.VISA.id,
-        icon: '🏨',
-        title: "Reserva de hotel",
-        description: "Busca alojamiento con cancelación gratuita",
-        time: "30 min",
-        emoji: '🛏️',
-        color: 'from-orange-400 to-orange-600',
-        tips: ['Booking.com tiene cancelación gratis', 'Imprime las confirmaciones', 'Cerca de transporte público'],
-        preferredTime: ['EVENING', 'NIGHT']
-      },
-      {
-        id: 'visa_3_3',
-        category: GOAL_CATEGORIES.VISA.id,
-        icon: '🗺️',
-        title: "Plan de viaje",
-        description: "Crea un itinerario día por día de tu visita",
-        time: "25 min",
-        emoji: '📍',
-        color: 'from-red-400 to-red-600',
-        tips: ['Incluye lugares turísticos', 'Agrega direcciones', 'Demuestra que volverás'],
-        preferredTime: ['EVENING', 'NIGHT']
-      }
-    ]
-  };
-  
-  // Extend pattern for remaining days
-  if (dayNumber > 3) {
-    const cycledDay = ((dayNumber - 1) % 3) + 1;
-    return tasksByDay[cycledDay] || tasksByDay[1];
+// Daily tasks data
+const dailyTasks = [
+  { 
+    id: 1,
+    icon: '📋',
+    title: "Revisar requisitos de visa",
+    description: "Lee la lista completa de documentos necesarios para tu visa de turista",
+    time: "15 min",
+    emoji: '🔍',
+    color: 'from-blue-400 to-blue-600',
+    tips: ['Guarda la lista en tu teléfono', 'Marca los documentos que ya tienes']
+  },
+  { 
+    id: 2,
+    icon: '🛂',
+    title: "Verificar pasaporte",
+    description: "Asegúrate que esté vigente por al menos 6 meses desde tu fecha de viaje",
+    time: "5 min",
+    emoji: '✅',
+    color: 'from-purple-400 to-purple-600',
+    tips: ['Revisa la fecha de vencimiento', 'Toma una foto clara de la página principal']
+  },
+  { 
+    id: 3,
+    icon: '📸',
+    title: "Fotografías para visa",
+    description: "Toma fotos con fondo blanco según las especificaciones canadienses",
+    time: "20 min",
+    emoji: '🤳',
+    color: 'from-pink-400 to-pink-600',
+    tips: ['Fondo blanco sin sombras', 'Sin lentes ni accesorios', 'Expresión neutral']
+  },
+  {
+    id: 4,
+    icon: '💰',
+    title: "Estado de cuenta bancario",
+    description: "Solicita los últimos 6 meses en tu banco",
+    time: "30 min",
+    emoji: '🏦',
+    color: 'from-yellow-400 to-yellow-600',
+    tips: ['Puede ser digital o físico', 'Debe mostrar tu nombre completo', 'Saldo promedio importante']
+  },
+  {
+    id: 5,
+    icon: '💼',
+    title: "Carta de empleo",
+    description: "Pide a RRHH una carta con tu salario, cargo y antigüedad",
+    time: "15 min",
+    emoji: '📄',
+    color: 'from-indigo-400 to-indigo-600',
+    tips: ['En papel membretado', 'Firmada y sellada', 'Mencione tu permiso de vacaciones']
+  },
+  {
+    id: 6,
+    icon: '✈️',
+    title: "Itinerario de vuelo",
+    description: "Reserva o cotiza tus vuelos de ida y vuelta",
+    time: "45 min",
+    emoji: '🎫',
+    color: 'from-cyan-400 to-cyan-600',
+    tips: ['No pagues hasta tener la visa', 'Guarda las cotizaciones en PDF', 'Fechas flexibles son mejores']
   }
+];
+
+// Motivational quotes
+const motivationalQuotes = [
+  "¡Cada paso te acerca más a Canadá! 🇨🇦",
+  "Tu visa está más cerca de lo que piensas ✨",
+  "¡Sigue así, lo estás haciendo genial! 💪",
+  "Paso a paso se logran grandes cosas 🌟",
+  "¡Tu esfuerzo de hoy es tu visa de mañana! 🎯"
+];
+
+// Header Component
+const DashboardHeader = ({ completedCount, totalTasks, userName, motivationalQuote }) => {
+  const progress = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
   
-  return tasksByDay[dayNumber] || tasksByDay[1];
+  return (
+    <div className="dashboard-header">
+      <div className="header-content">
+        <div className="user-greeting">
+          <h1>Hola {userName} 👋</h1>
+          <p className="progress-text">{completedCount} de {totalTasks} tareas • {progress}% completado</p>
+        </div>
+        <div className="motivation-quote">
+          <Sparkles size={16} />
+          <p>{motivationalQuote}</p>
+        </div>
+      </div>
+      <div className="progress-bar">
+        <div className="progress-fill" style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  );
 };
 
-// Header Component - Now shows contextual greeting
-const DashboardHeader = ({ motivationalQuote }) => (
-  <div className="dashboard-header-minimal">
-    <div className="motivation-banner-minimal">
-      <Sparkles size={14} className="sparkle-icon" />
-      <p className="motivation-text-minimal">{motivationalQuote}</p>
-      <Sparkles size={14} className="sparkle-icon" />
-    </div>
-  </div>
-);
-
-// Navigation Tab Bar - Simplified without progress
-const TabBar = ({ activeTab, onTabChange }) => (
-  <div className="tab-bar">
-    <button 
-      className={`tab-item ${activeTab === 'home' ? 'active' : ''}`}
-      onClick={() => onTabChange('home')}
-    >
-      <Home size={20} />
-      <span>Tareas</span>
-    </button>
-    <button 
-      className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`}
-      onClick={() => onTabChange('settings')}
-    >
-      <Settings size={20} />
-      <span>Ajustes</span>
-    </button>
-    <button 
-      className={`tab-item ${activeTab === 'profile' ? 'active' : ''}`}
-      onClick={() => onTabChange('profile')}
-    >
-      <User size={20} />
-      <span>Perfil</span>
-    </button>
-  </div>
-);
-
-// Main Dashboard Component with Multiple Goals Support
-const Dashboard = () => {
-  const { currentUser } = useAuth();
-  const [completedTasks, setCompletedTasks] = useState([]);
-  const [dayNumber, setDayNumber] = useState(1);
-  const [motivationalQuote, setMotivationalQuote] = useState('');
-  const [activeTab, setActiveTab] = useState('home');
-  const [userName, setUserName] = useState('');
-  const [activeGoals, setActiveGoals] = useState([]);
-  const [userPreferences, setUserPreferences] = useState(DEFAULT_USER_PREFERENCES);
-  const [currentTasks, setCurrentTasks] = useState([]);
+// Task Card Component
+const TaskCard = ({ task, onComplete, onSkip, isActive, style }) => {
+  const [showTips, setShowTips] = useState(false);
   
-  // Import task scheduling features
-  const { 
-    soundSettings, 
-    playAmbientSound
-  } = useTaskScheduling();
-
-  const initializeDashboard = useCallback(async () => {
-    console.log('Initializing dashboard...');
-    
-    // Initialize sound manager
-    await soundManager.init();
-    
-    // Get user name
-    const savedName = localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Amiga';
-    setUserName(savedName);
-    
-    // Calculate day number for visa goal
-    const startDate = localStorage.getItem('visa-quest-start-date');
-    let calculatedDay = 1;
-    if (startDate) {
-      const start = new Date(startDate);
-      const today = new Date();
-      const diffTime = Math.abs(today - start);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      calculatedDay = Math.min(diffDays, 21);
-    } else {
-      localStorage.setItem('visa-quest-start-date', new Date().toISOString());
-    }
-    setDayNumber(calculatedDay);
-
-    // Get completed tasks
-    const completed = JSON.parse(localStorage.getItem('visa-quest-completed-tasks') || '[]');
-    setCompletedTasks(completed);
-
-    // Initialize active goals
-    const savedGoals = JSON.parse(localStorage.getItem('visa-quest-active-goals') || '[]');
-    
-    console.log('Saved goals:', savedGoals);
-    
-    // Default goals if none saved
-    if (savedGoals.length === 0) {
-      const defaultGoals = [
-        {
-          id: 'visa-canada',
-          name: 'Visa Canadá',
-          category: GOAL_CATEGORIES.VISA.id,
-          active: true,
-          tasks: getTasksByDay(calculatedDay)
-        },
-        {
-          id: 'work-productivity',
-          name: 'Productividad Laboral',
-          category: GOAL_CATEGORIES.WORK.id,
-          active: true,
-          tasks: WORK_TASKS
-        },
-        {
-          id: 'daily-wellness',
-          name: 'Bienestar Diario',
-          category: GOAL_CATEGORIES.HEALTH.id,
-          active: true,
-          tasks: PERSONAL_TASKS.filter(t => t.category === GOAL_CATEGORIES.HEALTH.id)
-        }
-      ];
-      
-      console.log('Setting default goals:', defaultGoals);
-      setActiveGoals(defaultGoals);
-      localStorage.setItem('visa-quest-active-goals', JSON.stringify(defaultGoals));
-    } else {
-      // Update visa tasks for current day
-      const updatedGoals = savedGoals.map(goal => {
-        if (goal.id === 'visa-canada') {
-          return { ...goal, tasks: getTasksByDay(calculatedDay) };
-        }
-        return goal;
-      });
-      console.log('Updated goals:', updatedGoals);
-      setActiveGoals(updatedGoals);
-    }
-
-    // Get user preferences
-    const savedPreferences = JSON.parse(
-      localStorage.getItem('visa-quest-preferences') || 
-      JSON.stringify(DEFAULT_USER_PREFERENCES)
-    );
-    setUserPreferences(savedPreferences);
-
-    // Set contextual greeting
-    setMotivationalQuote(getContextualGreeting());
-    
-    // Play ambient sound based on time
-    const timeContext = getCurrentTimeContext();
-    playAmbientSound(timeContext);
-
-    // Initialize Firebase collections
-    try {
-      // Initialize schedule in Firebase
-      await scheduleService.initializeUserSchedule(currentUser?.uid);
-      
-      // Initialize goals in Firebase
-      await goalsService.initializeUserGoals(currentUser?.uid);
-      
-      // Sync local goals to Firebase
-      if (savedGoals.length > 0) {
-        await goalsService.updateUserGoals(currentUser?.uid, {
-          activeGoals: savedGoals,
-          preferences: savedPreferences
-        });
-      }
-      
-      console.log('Firebase collections initialized');
-    } catch (error) {
-      console.error('Error initializing Firebase collections:', error);
-    }
-
-    // Track dashboard view
-    if (analyticsService && analyticsService.trackAction) {
-      analyticsService.trackAction(currentUser?.uid, 'dashboard_view', { 
-        dayNumber: calculatedDay,
-        activeGoals: savedGoals.length || 3
-      });
-    }
-  }, [currentUser, playAmbientSound]);
-
-  useEffect(() => {
-    initializeDashboard();
-  }, [initializeDashboard]);
-
-  useEffect(() => {
-    // Generate tasks using smart distribution
-    if (activeGoals.length > 0) {
-      const distributedTasks = getSmartTaskDistribution(
-        activeGoals,
-        completedTasks,
-        userPreferences
-      );
-      
-      setCurrentTasks(distributedTasks);
-    }
-  }, [activeGoals, completedTasks, userPreferences]);
-
-  // Update greeting based on time
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMotivationalQuote(getContextualGreeting());
-    }, 60000); // Update every minute
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleTaskComplete = async (taskId) => {
-    if (completedTasks.includes(taskId)) return;
-
-    // Play completion sound
-    if (soundSettings.enabled) {
-      await soundManager.playTaskComplete();
-    }
-
-    // Update completed tasks
-    const newCompleted = [...completedTasks, taskId];
-    setCompletedTasks(newCompleted);
-    localStorage.setItem('visa-quest-completed-tasks', JSON.stringify(newCompleted));
-
-    // Save to Firebase
-    const task = currentTasks.find(t => t.id === taskId);
-    if (task && progressService && progressService.completeTask) {
-      await progressService.completeTask(currentUser?.uid, {
-        taskId,
-        taskTitle: task.title,
-        category: task.category,
-        dayNumber,
-        completedAt: new Date().toISOString()
-      });
-    }
-
-    // Update goal progress in Firebase
-    if (task) {
-      const goalId = activeGoals.find(g => g.category === task.category)?.id;
-      if (goalId) {
-        const categoryTasks = newCompleted.filter(id => {
-          const t = currentTasks.find(ct => ct.id === id);
-          return t && t.category === task.category;
-        });
-        await goalsService.updateGoalProgress(currentUser?.uid, goalId, categoryTasks.length);
-      }
-    }
-
-    // Calculate progress for tracking
-    const allTasks = getAllTasks(activeGoals);
-    const progress = Math.round((newCompleted.length / allTasks.length) * 100);
-
-    // Track action
-    if (analyticsService && analyticsService.trackAction) {
-      analyticsService.trackAction(currentUser?.uid, 'task_completed', { 
-        taskId, 
-        category: task?.category,
-        timeContext: getCurrentTimeContext(),
-        progress 
-      });
-    }
-  };
-
-  // Reset journey handler
-  const handleResetJourney = () => {
-    if (window.confirm('¿Estás segura que quieres reiniciar tu viaje? Esto borrará todo tu progreso local.')) {
-      // Clear all localStorage data
-      localStorage.removeItem('visa-quest-user-name');
-      localStorage.removeItem('visa-quest-has-seen-welcome');
-      localStorage.removeItem('visa-quest-daily-mood');
-      localStorage.removeItem('visa-quest-completed-tasks');
-      localStorage.removeItem('visa-quest-start-date');
-      localStorage.removeItem('visa-quest-active-goals');
-      localStorage.removeItem('visa-quest-preferences');
-      localStorage.removeItem('visa-quest-sound-settings');
-      
-      // Reload the page to start fresh
-      window.location.href = '/';
-    }
-  };
-
-  // Handle tab change
-  const handleTabChange = (tab) => {
-    console.log('Changing tab to:', tab);
-    setActiveTab(tab);
-    
-    // Track tab change
-    if (analyticsService && analyticsService.trackAction) {
-      analyticsService.trackAction(currentUser?.uid, 'tab_changed', { tab });
-    }
-  };
-
   return (
-    <div className="dashboard-tiktok-container">
-      {/* Fixed Header with Motivation */}
-      <DashboardHeader motivationalQuote={motivationalQuote} />
+    <div 
+      className={`task-card ${isActive ? 'active' : ''}`}
+      style={style}
+    >
+      <div className={`task-gradient ${task.color}`}>
+        <span className="task-emoji">{task.icon}</span>
+      </div>
       
-      {/* Show notification manager on home tab */}
-      {activeTab === 'home' && (
-        <div className="px-4 mt-2">
-          <NotificationManager />
-        </div>
-      )}
-      
-      {/* Main Content Area */}
-      <div className="dashboard-content">
-        {/* Reset Button - Only show on home tab */}
-        {activeTab === 'home' && (
-          <button 
-            className="reset-button-minimal"
-            onClick={handleResetJourney}
-            title="Reiniciar viaje"
-          >
-            <RefreshCw size={16} />
-          </button>
-        )}
+      <div className="task-content">
+        <h2 className="task-title">{task.title}</h2>
+        <p className="task-description">{task.description}</p>
         
-        {/* Content based on active tab */}
-        {activeTab === 'home' ? (
-          /* TikTok-style Task List */
-          <TaskList 
-            tasks={currentTasks}
-            completedTasks={completedTasks}
-            onTaskComplete={handleTaskComplete}
-            userName={userName}
-            dayNumber={dayNumber}
-          />
-        ) : activeTab === 'settings' ? (
-          <ScheduleSettings />
-        ) : (
-          /* Profile tab placeholder */
-          <div className="profile-placeholder">
-            <User size={48} />
-            <p>Perfil próximamente</p>
+        <div className="task-meta">
+          <span className="task-time">
+            <Clock size={16} />
+            {task.time}
+          </span>
+        </div>
+        
+        {task.tips && (
+          <div className="tips-section">
+            <button 
+              className="tips-toggle"
+              onClick={() => setShowTips(!showTips)}
+            >
+              💡 {showTips ? 'Ocultar' : 'Ver'} consejos
+            </button>
+            
+            {showTips && (
+              <div className="tips-list">
+                {task.tips.map((tip, index) => (
+                  <div key={index} className="tip-item">
+                    <span className="tip-bullet">•</span>
+                    <span>{tip}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// Main Dashboard Component
+const Dashboard = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [completedTasks, setCompletedTasks] = useState([]);
+  const [userName, setUserName] = useState('');
+  const [dailyMood, setDailyMood] = useState(null);
+  const [showMoodSelector, setShowMoodSelector] = useState(true);
+  const [motivationalQuote, setMotivationalQuote] = useState('');
+  const [isAnimating, setIsAnimating] = useState(false);
+  
+  // Touch handling
+  const startY = useRef(0);
+  const currentY = useRef(0);
+  const [dragDistance, setDragDistance] = useState(0);
+
+  useEffect(() => {
+    // Get user name
+    const savedName = localStorage.getItem('visa-quest-user-name') || 'Amiga';
+    setUserName(savedName);
+    
+    // Get completed tasks
+    const savedCompleted = JSON.parse(localStorage.getItem('visa-quest-completed-tasks') || '[]');
+    setCompletedTasks(savedCompleted);
+    
+    // Check if mood was already selected today
+    const savedMood = localStorage.getItem('visa-quest-daily-mood');
+    const moodDate = localStorage.getItem('visa-quest-mood-date');
+    const today = new Date().toDateString();
+    
+    if (savedMood && moodDate === today) {
+      setDailyMood(savedMood);
+      setShowMoodSelector(false);
+    }
+    
+    // Set random motivational quote
+    setMotivationalQuote(motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
+  }, []);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.key === 'ArrowUp') navigateTask('prev');
+      if (e.key === 'ArrowDown') navigateTask('next');
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        handleComplete();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentIndex]);
+
+  // Touch handlers
+  const handleTouchStart = (e) => {
+    startY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e) => {
+    currentY.current = e.touches[0].clientY;
+    const distance = startY.current - currentY.current;
+    setDragDistance(distance);
+  };
+
+  const handleTouchEnd = () => {
+    const threshold = 50;
+    if (Math.abs(dragDistance) > threshold) {
+      if (dragDistance > 0) {
+        navigateTask('next');
+      } else {
+        navigateTask('prev');
+      }
+    }
+    setDragDistance(0);
+  };
+
+  // Navigation
+  const navigateTask = (direction) => {
+    if (isAnimating) return;
+    
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 300);
+
+    if (direction === 'next') {
+      setCurrentIndex((prev) => (prev + 1) % dailyTasks.length);
+    } else {
+      setCurrentIndex((prev) => (prev - 1 + dailyTasks.length) % dailyTasks.length);
+    }
+  };
+
+  // Task actions
+  const handleComplete = () => {
+    const currentTask = dailyTasks[currentIndex];
+    if (!completedTasks.includes(currentTask.id)) {
+      const newCompleted = [...completedTasks, currentTask.id];
+      setCompletedTasks(newCompleted);
+      localStorage.setItem('visa-quest-completed-tasks', JSON.stringify(newCompleted));
       
-      {/* Bottom Tab Bar */}
-      <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+      // Auto navigate to next task
+      setTimeout(() => navigateTask('next'), 500);
+    }
+  };
+
+  const handleSkip = () => {
+    navigateTask('next');
+  };
+
+  const handleMoodSelect = (mood) => {
+    setDailyMood(mood);
+    setShowMoodSelector(false);
+    localStorage.setItem('visa-quest-daily-mood', mood);
+    localStorage.setItem('visa-quest-mood-date', new Date().toDateString());
+  };
+
+  const handleReset = () => {
+    if (window.confirm('¿Estás segura que quieres reiniciar tu progreso?')) {
+      setCompletedTasks([]);
+      localStorage.removeItem('visa-quest-completed-tasks');
+      setCurrentIndex(0);
+    }
+  };
+
+  const currentTask = dailyTasks[currentIndex];
+  const isCompleted = completedTasks.includes(currentTask.id);
+
+  return (
+    <div className="dashboard-container">
+      <DashboardHeader 
+        completedCount={completedTasks.length}
+        totalTasks={dailyTasks.length}
+        userName={userName}
+        motivationalQuote={motivationalQuote}
+      />
+      
+      {showMoodSelector && (
+        <div className="mood-selector">
+          <h3>¿Cómo te sientes hoy?</h3>
+          <div className="mood-options">
+            <button onClick={() => handleMoodSelect('energetic')} className="mood-btn">
+              <span className="mood-emoji">💪</span>
+              <span>Con energía</span>
+            </button>
+            <button onClick={() => handleMoodSelect('calm')} className="mood-btn">
+              <span className="mood-emoji">😌</span>
+              <span>Tranquila</span>
+            </button>
+            <button onClick={() => handleMoodSelect('focused')} className="mood-btn">
+              <span className="mood-emoji">🎯</span>
+              <span>Enfocada</span>
+            </button>
+            <button onClick={() => handleMoodSelect('excited')} className="mood-btn">
+              <span className="mood-emoji">🤩</span>
+              <span>Emocionada</span>
+            </button>
+          </div>
+        </div>
+      )}
+      
+      <div 
+        className="task-container"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <TaskCard 
+          task={currentTask}
+          onComplete={handleComplete}
+          onSkip={handleSkip}
+          isActive={true}
+          style={{
+            transform: `translateY(${-dragDistance * 0.3}px) scale(${1 - Math.abs(dragDistance) * 0.0005})`,
+            opacity: 1 - Math.abs(dragDistance) * 0.003
+          }}
+        />
+        
+        {/* Action Buttons */}
+        <div className="action-buttons">
+          <button className="action-btn secondary" onClick={handleSkip}>
+            <X size={24} />
+          </button>
+          
+          <button 
+            className={`action-btn primary ${isCompleted ? 'completed' : ''}`}
+            onClick={handleComplete}
+            disabled={isCompleted}
+          >
+            {isCompleted ? <CheckCircle size={32} /> : <Heart size={32} />}
+          </button>
+          
+          <button className="action-btn secondary">
+            <Share2 size={24} />
+          </button>
+        </div>
+        
+        {/* Navigation Dots */}
+        <div className="navigation-dots">
+          {dailyTasks.map((_, index) => (
+            <div 
+              key={index}
+              className={`dot ${index === currentIndex ? 'active' : ''} ${completedTasks.includes(dailyTasks[index].id) ? 'completed' : ''}`}
+              onClick={() => setCurrentIndex(index)}
+            />
+          ))}
+        </div>
+      </div>
+      
+      {/* Reset Button */}
+      <button className="reset-button" onClick={handleReset}>
+        <RefreshCw size={16} />
+        Reiniciar progreso
+      </button>
+      
+      {/* Completion Celebration */}
+      {completedTasks.length === dailyTasks.length && (
+        <div className="completion-celebration">
+          <div className="celebration-content">
+            <span className="celebration-emoji">🎉</span>
+            <h2>¡Felicitaciones {userName}!</h2>
+            <p>Has completado todas las tareas de hoy</p>
+            <p className="celebration-message">Estás un paso más cerca de tu visa 🇨🇦</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
