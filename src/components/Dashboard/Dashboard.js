@@ -12,6 +12,7 @@ import {
   DEFAULT_USER_PREFERENCES
 } from '../../data/goals';
 import SimpleProgressView from './SimpleProgressView';
+import DailyPhrases from '../DailyPhrases'; // Import the new component
 import './Dashboard.css';
 
 // Card types for different activities
@@ -171,8 +172,8 @@ const getTasksByDay = (dayNumber) => {
   return tasksByDay[dayNumber] || tasksByDay[1];
 };
 
-// Header Component - Now shows contextual greeting
-const DashboardHeader = ({ motivationalQuote }) => (
+// Header Component - Now shows contextual greeting and daily phrases
+const DashboardHeader = ({ motivationalQuote, userMood }) => (
   <div className="dashboard-header-minimal">
     <div className="motivation-banner-minimal">
       <Sparkles size={14} className="sparkle-icon" />
@@ -237,14 +238,22 @@ const TaskCard = ({ card, onComplete }) => {
   );
 };
 
-// Tip Card Component
-const TipCard = ({ card }) => (
+// Tip Card Component - Enhanced to show daily phrases
+const TipCard = ({ card, userMood }) => (
   <div className="card-content tip-card">
     <div className="tip-header">
       <Sparkles size={24} />
       <h2>{card.title}</h2>
     </div>
     <p className="tip-content">{card.content}</p>
+    
+    {/* Show daily phrases in tip cards */}
+    {card.showDailyPhrases && userMood && (
+      <div className="tip-daily-phrases">
+        <DailyPhrases userMood={userMood} />
+      </div>
+    )}
+    
     <div className="tip-decoration">
       <BookOpen size={48} className="tip-icon" />
     </div>
@@ -293,6 +302,7 @@ const Dashboard = () => {
   const [isChangingTab, setIsChangingTab] = useState(false);
   const [savedCardIndex, setSavedCardIndex] = useState(0); // Store card position when leaving home tab
   const [wheelListenerActive, setWheelListenerActive] = useState(false);
+  const [userMood, setUserMood] = useState(null); // New state for user mood
   
   // Enhanced touch handling with velocity tracking
   const [touchStart, setTouchStart] = useState(0);
@@ -311,6 +321,20 @@ const Dashboard = () => {
     // Get user name
     const savedName = localStorage.getItem('visa-quest-user-name') || currentUser?.displayName || 'Amiga';
     setUserName(savedName);
+    
+    // Get user mood from localStorage
+    const savedMood = localStorage.getItem('visa-quest-daily-mood');
+    if (savedMood) {
+      try {
+        const parsed = JSON.parse(savedMood);
+        const today = new Date().toDateString();
+        if (parsed.date === today) {
+          setUserMood(parsed.mood);
+        }
+      } catch (e) {
+        console.error('Error parsing mood:', e);
+      }
+    }
     
     // Calculate day number for visa goal
     const startDate = localStorage.getItem('visa-quest-start-date');
@@ -408,7 +432,7 @@ const Dashboard = () => {
         userPreferences
       );
       
-      // Convert to card format
+      // Convert to card format and add daily phrases card
       const formattedCards = distributedTasks.map(item => {
         if (item.type === 'tip') {
           return {
@@ -427,9 +451,24 @@ const Dashboard = () => {
         };
       });
       
+      // Add a daily phrases card if user has mood
+      if (userMood) {
+        const phrasesCard = {
+          id: 'daily-phrases-card',
+          type: CARD_TYPES.TIP,
+          title: 'Tu frase motivacional del día',
+          content: 'Basada en cómo te sientes hoy',
+          color: 'from-purple-400 to-pink-600',
+          showDailyPhrases: true
+        };
+        
+        // Insert it as the second card
+        formattedCards.splice(1, 0, phrasesCard);
+      }
+      
       setCards(formattedCards);
     }
-  }, [activeGoals, completedTasks, userPreferences]);
+  }, [activeGoals, completedTasks, userPreferences, userMood]);
 
   // Update greeting based on time
   useEffect(() => {
@@ -633,7 +672,7 @@ const Dashboard = () => {
       case CARD_TYPES.TASK:
         return <TaskCard card={card} onComplete={handleTaskComplete} />;
       case CARD_TYPES.TIP:
-        return <TipCard card={card} />;
+        return <TipCard card={card} userMood={userMood} />;
       default:
         return null;
     }
@@ -763,7 +802,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard-tiktok-container">
       {/* Fixed Header with Motivation */}
-      <DashboardHeader motivationalQuote={motivationalQuote} />
+      <DashboardHeader motivationalQuote={motivationalQuote} userMood={userMood} />
       
       {/* Main Content Area */}
       <div 
