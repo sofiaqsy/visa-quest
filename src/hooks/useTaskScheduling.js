@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import soundManager from '../utils/soundManager';
-import scheduleManager from '../utils/scheduleManager';
+import { scheduleService, goalsService } from '../firebase/services';
 import { 
   collection, 
   doc, 
@@ -25,17 +25,26 @@ export const useTaskScheduling = () => {
   const [loading, setLoading] = useState(true);
   const [soundSettings, setSoundSettings] = useState(soundManager.getSettings());
 
-  // Initialize user schedule
+  // Initialize user schedule from Firebase
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser && !localStorage.getItem('visa-quest-device-id')) {
       setLoading(false);
       return;
     }
 
     const initSchedule = async () => {
       try {
-        const userSchedule = await scheduleManager.getUserSchedule(currentUser.uid);
+        // Initialize schedule in Firebase
+        const userSchedule = await scheduleService.getUserSchedule(currentUser?.uid);
         setSchedule(userSchedule);
+        
+        // Initialize goals in Firebase if needed
+        await goalsService.getUserGoals(currentUser?.uid);
+        
+        // Sync local data to Firebase if user is authenticated
+        if (currentUser?.uid) {
+          await goalsService.syncLocalGoals(currentUser.uid);
+        }
       } catch (error) {
         console.error('Error loading schedule:', error);
       } finally {
@@ -46,13 +55,15 @@ export const useTaskScheduling = () => {
     initSchedule();
   }, [currentUser]);
 
-  // Subscribe to scheduled tasks
+  // Subscribe to scheduled tasks from Firebase
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser && !localStorage.getItem('visa-quest-device-id')) return;
 
+    const effectiveUserId = currentUser?.uid || `guest_${localStorage.getItem('visa-quest-device-id') || Date.now()}`;
+    
     const q = query(
       collection(db, 'scheduledTasks'),
-      where('userId', '==', currentUser.uid),
+      where('userId', '==', effectiveUserId),
       where('status', 'in', ['pending', 'reminder_sent']),
       orderBy('scheduledTime', 'asc')
     );
@@ -60,9 +71,17 @@ export const useTaskScheduling = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const tasks = [];
       snapshot.forEach((doc) => {
-        tasks.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        tasks.push({ 
+          id: doc.id, 
+          ...data,
+          // Convert Firestore timestamp to Date if needed
+          scheduledTime: data.scheduledTime?.toDate ? data.scheduledTime : new Date(data.scheduledTime)
+        });
       });
       setScheduledTasks(tasks);
+    }, (error) => {
+      console.error('Error subscribing to scheduled tasks:', error);
     });
 
     return () => unsubscribe();
@@ -70,43 +89,26 @@ export const useTaskScheduling = () => {
 
   // Schedule a task
   const scheduleTask = useCallback(async (task, scheduledTime = null) => {
-    if (!currentUser || !schedule) return null;
+    if (!schedule) return null;
 
     try {
       // Get optimal time if not provided
-      const taskTime = scheduledTime || 
-        scheduleManager.getOptimalTaskTime(task.category, schedule)?.date ||
-        new Date();
+      const taskTime = scheduledTime || new Date();
 
-      // Create scheduled task document
-      const scheduledTaskRef = doc(collection(db, 'scheduledTasks'));
-      const scheduledTask = {
+      // Save to Firebase
+      const taskId = await scheduleService.saveScheduledTask(currentUser?.uid, {
         ...task,
-        userId: currentUser.uid,
         scheduledTime: Timestamp.fromDate(taskTime),
-        status: 'pending',
-        createdAt: serverTimestamp(),
         soundEnabled: schedule.notifications.sound,
         notificationEnabled: schedule.notifications.enabled
-      };
-
-      await setDoc(scheduledTaskRef, scheduledTask);
-
-      // Schedule notification
-      if (schedule.notifications.enabled) {
-        await scheduleManager.scheduleNotification(
-          currentUser.uid, 
-          { ...task, scheduledTime: taskTime, id: scheduledTaskRef.id },
-          schedule
-        );
-      }
+      });
 
       // Play scheduling sound
       if (soundSettings.enabled) {
         await soundManager.playSound('focus');
       }
 
-      return scheduledTaskRef.id;
+      return taskId;
     } catch (error) {
       console.error('Error scheduling task:', error);
       return null;
@@ -115,12 +117,9 @@ export const useTaskScheduling = () => {
 
   // Complete a scheduled task
   const completeScheduledTask = useCallback(async (taskId) => {
-    if (!currentUser) return false;
-
     try {
-      const taskRef = doc(db, 'scheduledTasks', taskId);
-      
-      await updateDoc(taskRef, {
+      // Update in Firebase
+      await scheduleService.updateScheduledTask(taskId, {
         status: 'completed',
         completedAt: serverTimestamp()
       });
@@ -130,8 +129,8 @@ export const useTaskScheduling = () => {
         await soundManager.playTaskComplete();
       }
 
-      // Update user stats
-      const statsRef = doc(db, 'userStats', currentUser.uid);
+      // Update user stats in Firebase
+      const statsRef = doc(db, 'userStats', currentUser?.uid || `guest_${localStorage.getItem('visa-quest-device-id')}`);
       const statsDoc = await getDoc(statsRef);
       
       if (statsDoc.exists()) {
@@ -144,7 +143,7 @@ export const useTaskScheduling = () => {
         await setDoc(statsRef, {
           tasksCompleted: 1,
           lastTaskCompleted: serverTimestamp(),
-          userId: currentUser.uid
+          userId: currentUser?.uid || `guest_${localStorage.getItem('visa-quest-device-id')}`
         });
       }
 
@@ -157,27 +156,14 @@ export const useTaskScheduling = () => {
 
   // Reschedule a task
   const rescheduleTask = useCallback(async (taskId, newTime) => {
-    if (!currentUser || !schedule) return false;
+    if (!schedule) return false;
 
     try {
-      const taskRef = doc(db, 'scheduledTasks', taskId);
-      const taskDoc = await getDoc(taskRef);
-      
-      if (!taskDoc.exists()) return false;
-
-      await updateDoc(taskRef, {
+      await scheduleService.updateScheduledTask(taskId, {
         scheduledTime: Timestamp.fromDate(newTime),
         rescheduledAt: serverTimestamp(),
         status: 'pending'
       });
-
-      // Reschedule notification
-      const task = taskDoc.data();
-      await scheduleManager.scheduleNotification(
-        currentUser.uid,
-        { ...task, scheduledTime: newTime, id: taskId },
-        schedule
-      );
 
       // Play reschedule sound
       if (soundSettings.enabled) {
@@ -189,17 +175,15 @@ export const useTaskScheduling = () => {
       console.error('Error rescheduling task:', error);
       return false;
     }
-  }, [currentUser, schedule, soundSettings]);
+  }, [schedule, soundSettings]);
 
   // Update schedule preferences
   const updateSchedule = useCallback(async (updates) => {
-    if (!currentUser) return false;
-
     try {
-      const success = await scheduleManager.updateUserSchedule(currentUser.uid, updates);
+      const success = await scheduleService.updateUserSchedule(currentUser?.uid, updates);
       
       if (success) {
-        const updatedSchedule = await scheduleManager.getUserSchedule(currentUser.uid);
+        const updatedSchedule = await scheduleService.getUserSchedule(currentUser?.uid);
         setSchedule(updatedSchedule);
       }
 
@@ -232,7 +216,7 @@ export const useTaskScheduling = () => {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     return scheduledTasks.filter(task => {
-      const taskTime = task.scheduledTime.toDate();
+      const taskTime = task.scheduledTime instanceof Date ? task.scheduledTime : task.scheduledTime.toDate();
       return taskTime >= today && taskTime < tomorrow;
     });
   }, [scheduledTasks]);
@@ -240,13 +224,55 @@ export const useTaskScheduling = () => {
   // Check if in focus mode
   const isInFocusMode = useCallback(() => {
     if (!schedule) return false;
-    return scheduleManager.isInFocusMode(schedule);
+    
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    if (!schedule.focusMode?.enabled) return false;
+    
+    for (const session of (schedule.focusMode.sessions || [])) {
+      if (session.days?.includes(currentDay) &&
+          currentTime >= session.start &&
+          currentTime <= session.end) {
+        return session.name;
+      }
+    }
+    
+    return false;
   }, [schedule]);
 
   // Check if it's break time
   const isBreakTime = useCallback(() => {
     if (!schedule) return null;
-    return scheduleManager.isBreakTime(schedule);
+    
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    // Check lunch break
+    if (schedule.breaks?.lunch?.enabled &&
+        currentTime >= schedule.breaks.lunch.start &&
+        currentTime <= schedule.breaks.lunch.end) {
+      return 'lunch';
+    }
+    
+    // Check other breaks
+    for (const [breakName, breakConfig] of Object.entries(schedule.breaks || {})) {
+      if (breakName !== 'lunch' && breakConfig.enabled) {
+        const breakStart = new Date();
+        const [hours, minutes] = breakConfig.time.split(':');
+        breakStart.setHours(parseInt(hours), parseInt(minutes), 0);
+        
+        const breakEnd = new Date(breakStart);
+        breakEnd.setMinutes(breakEnd.getMinutes() + breakConfig.duration);
+        
+        if (now >= breakStart && now <= breakEnd) {
+          return breakName;
+        }
+      }
+    }
+    
+    return null;
   }, [schedule]);
 
   return {
