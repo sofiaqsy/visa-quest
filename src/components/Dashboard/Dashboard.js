@@ -22,12 +22,12 @@ const CARD_TYPES = {
 
 // Category icons and colors
 const CATEGORY_CONFIG = {
-  [GOAL_CATEGORIES.VISA]: { icon: '🇨🇦', gradient: 'from-blue-400 to-blue-600' },
-  [GOAL_CATEGORIES.WORK]: { icon: '💼', gradient: 'from-purple-400 to-purple-600' },
-  [GOAL_CATEGORIES.PERSONAL]: { icon: '✨', gradient: 'from-pink-400 to-pink-600' },
-  [GOAL_CATEGORIES.HEALTH]: { icon: '💪', gradient: 'from-green-400 to-green-600' },
-  [GOAL_CATEGORIES.LEARNING]: { icon: '📚', gradient: 'from-yellow-400 to-yellow-600' },
-  [GOAL_CATEGORIES.FINANCE]: { icon: '💰', gradient: 'from-indigo-400 to-indigo-600' }
+  [GOAL_CATEGORIES.VISA.id]: { icon: '🇨🇦', gradient: 'from-blue-400 to-blue-600' },
+  [GOAL_CATEGORIES.WORK.id]: { icon: '💼', gradient: 'from-purple-400 to-purple-600' },
+  [GOAL_CATEGORIES.PERSONAL.id]: { icon: '✨', gradient: 'from-pink-400 to-pink-600' },
+  [GOAL_CATEGORIES.HEALTH.id]: { icon: '💪', gradient: 'from-green-400 to-green-600' },
+  [GOAL_CATEGORIES.LEARNING.id]: { icon: '📚', gradient: 'from-yellow-400 to-yellow-600' },
+  [GOAL_CATEGORIES.FINANCE.id]: { icon: '💰', gradient: 'from-indigo-400 to-indigo-600' }
 };
 
 // Get all tasks for progress calculation  
@@ -49,7 +49,7 @@ const getTasksByDay = (dayNumber) => {
     1: [
       { 
         id: 'visa_1_1',
-        category: GOAL_CATEGORIES.VISA,
+        category: GOAL_CATEGORIES.VISA.id,
         icon: '📋',
         title: "Revisar requisitos de visa",
         description: "Lee la lista completa de documentos necesarios para tu visa de turista",
@@ -61,7 +61,7 @@ const getTasksByDay = (dayNumber) => {
       },
       { 
         id: 'visa_1_2',
-        category: GOAL_CATEGORIES.VISA,
+        category: GOAL_CATEGORIES.VISA.id,
         icon: '🛂',
         title: "Verificar pasaporte",
         description: "Asegúrate que esté vigente por al menos 6 meses desde tu fecha de viaje",
@@ -73,7 +73,7 @@ const getTasksByDay = (dayNumber) => {
       },
       { 
         id: 'visa_1_3',
-        category: GOAL_CATEGORIES.VISA,
+        category: GOAL_CATEGORIES.VISA.id,
         icon: '📁',
         title: "Crear carpeta digital",
         description: "Organiza tus documentos en Google Drive o Dropbox",
@@ -87,7 +87,7 @@ const getTasksByDay = (dayNumber) => {
     2: [
       { 
         id: 'visa_2_1',
-        category: GOAL_CATEGORIES.VISA,
+        category: GOAL_CATEGORIES.VISA.id,
         icon: '📸',
         title: "Fotografías para visa",
         description: "Toma fotos con fondo blanco según las especificaciones canadienses",
@@ -99,7 +99,7 @@ const getTasksByDay = (dayNumber) => {
       },
       { 
         id: 'visa_2_2',
-        category: GOAL_CATEGORIES.VISA,
+        category: GOAL_CATEGORIES.VISA.id,
         icon: '💰',
         title: "Estado de cuenta bancario",
         description: "Solicita los últimos 6 meses en tu banco",
@@ -111,7 +111,7 @@ const getTasksByDay = (dayNumber) => {
       },
       { 
         id: 'visa_2_3',
-        category: GOAL_CATEGORIES.VISA,
+        category: GOAL_CATEGORIES.VISA.id,
         icon: '💼',
         title: "Carta de empleo",
         description: "Pide a RRHH una carta con tu salario, cargo y antigüedad",
@@ -125,7 +125,7 @@ const getTasksByDay = (dayNumber) => {
     3: [
       {
         id: 'visa_3_1',
-        category: GOAL_CATEGORIES.VISA,
+        category: GOAL_CATEGORIES.VISA.id,
         icon: '✈️',
         title: "Itinerario de vuelo",
         description: "Reserva o cotiza tus vuelos de ida y vuelta",
@@ -137,7 +137,7 @@ const getTasksByDay = (dayNumber) => {
       },
       {
         id: 'visa_3_2',
-        category: GOAL_CATEGORIES.VISA,
+        category: GOAL_CATEGORIES.VISA.id,
         icon: '🏨',
         title: "Reserva de hotel",
         description: "Busca alojamiento con cancelación gratuita",
@@ -149,7 +149,7 @@ const getTasksByDay = (dayNumber) => {
       },
       {
         id: 'visa_3_3',
-        category: GOAL_CATEGORIES.VISA,
+        category: GOAL_CATEGORIES.VISA.id,
         icon: '🗺️',
         title: "Plan de viaje",
         description: "Crea un itinerario día por día de tu visita",
@@ -184,15 +184,16 @@ const DashboardHeader = ({ motivationalQuote }) => (
 
 // Task Card Component - Enhanced with category tag
 const TaskCard = ({ card, onComplete }) => {
-  const categoryConfig = CATEGORY_CONFIG[card.category] || CATEGORY_CONFIG[GOAL_CATEGORIES.PERSONAL];
+  const categoryConfig = CATEGORY_CONFIG[card.category] || CATEGORY_CONFIG[GOAL_CATEGORIES.PERSONAL.id];
+  const categoryInfo = Object.values(GOAL_CATEGORIES).find(cat => cat.id === card.category);
   
   return (
     <div className={`card-content task-card ${card.completed ? 'completed' : ''}`}>
       {/* Category tag */}
-      {card.category && (
+      {card.category && categoryInfo && (
         <div className={`task-category-tag ${card.category}`}>
           <span>{categoryConfig.icon}</span>
-          <span>{card.category}</span>
+          <span>{categoryInfo.name}</span>
         </div>
       )}
       
@@ -340,23 +341,23 @@ const Dashboard = () => {
         {
           id: 'visa-canada',
           name: 'Visa Canadá',
-          category: GOAL_CATEGORIES.VISA,
+          category: GOAL_CATEGORIES.VISA.id,
           active: true,
           tasks: getTasksByDay(calculatedDay)
         },
         {
           id: 'work-productivity',
           name: 'Productividad Laboral',
-          category: GOAL_CATEGORIES.WORK,
+          category: GOAL_CATEGORIES.WORK.id,
           active: true,
           tasks: WORK_TASKS
         },
         {
           id: 'daily-wellness',
           name: 'Bienestar Diario',
-          category: GOAL_CATEGORIES.HEALTH,
+          category: GOAL_CATEGORIES.HEALTH.id,
           active: true,
-          tasks: PERSONAL_TASKS.filter(t => t.category === GOAL_CATEGORIES.HEALTH)
+          tasks: PERSONAL_TASKS.filter(t => t.category === GOAL_CATEGORIES.HEALTH.id)
         }
       ];
       
@@ -416,7 +417,7 @@ const Dashboard = () => {
           };
         }
         
-        const categoryConfig = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG[GOAL_CATEGORIES.PERSONAL];
+        const categoryConfig = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG[GOAL_CATEGORIES.PERSONAL.id];
         
         return {
           type: CARD_TYPES.TASK,
