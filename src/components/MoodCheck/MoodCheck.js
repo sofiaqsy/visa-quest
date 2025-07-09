@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import './MoodCheck.css';
 
-const MoodCheck = ({ userName = 'Amiga' }) => {
+const MoodCheck = ({ userName = 'Amiga', onMoodComplete }) => {
   const [selectedMood, setSelectedMood] = useState(null);
-  const navigate = useNavigate();
 
   const moods = [
     {
@@ -50,9 +48,11 @@ const MoodCheck = ({ userName = 'Amiga' }) => {
     };
     localStorage.setItem('visa-quest-daily-mood', JSON.stringify(moodData));
     
-    // Navigate to dashboard after a short delay
+    // Call the completion handler after a short delay
     setTimeout(() => {
-      navigate('/dashboard');
+      if (onMoodComplete) {
+        onMoodComplete();
+      }
     }, 500);
   };
 
