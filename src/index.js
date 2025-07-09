@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 
+// Add console log to verify script is running
+console.log('VisaQuest: index.js loaded');
+
 // Error boundary component
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -11,11 +14,12 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
+    console.error('VisaQuest ErrorBoundary caught:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('VisaQuest Error:', error, errorInfo);
+    console.error('VisaQuest Error Details:', error, errorInfo);
   }
 
   render() {
@@ -86,8 +90,10 @@ class ErrorBoundary extends React.Component {
 
 // Check for root element
 const rootElement = document.getElementById('root');
+console.log('VisaQuest: Root element found:', !!rootElement);
 
 if (!rootElement) {
+  console.error('VisaQuest: Root element not found!');
   document.body.innerHTML = `
     <div style="
       min-height: 100vh;
@@ -105,12 +111,79 @@ if (!rootElement) {
     </div>
   `;
 } else {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </React.StrictMode>
-  );
+  try {
+    console.log('VisaQuest: Creating React root...');
+    const root = ReactDOM.createRoot(rootElement);
+    
+    console.log('VisaQuest: Rendering app...');
+    root.render(
+      <React.StrictMode>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </React.StrictMode>
+    );
+    
+    console.log('VisaQuest: App rendered successfully');
+  } catch (error) {
+    console.error('VisaQuest: Error during render:', error);
+    
+    // Show error in UI
+    rootElement.innerHTML = `
+      <div style="
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        background-color: #f7fafc;
+      ">
+        <div style="
+          text-align: center;
+          background: white;
+          padding: 30px;
+          border-radius: 15px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          max-width: 400px;
+        ">
+          <h2 style="color: #e53e3e; margin-bottom: 15px;">
+            😔 Error al iniciar la aplicación
+          </h2>
+          <p style="color: #4a5568; margin-bottom: 20px;">
+            ${error.message || 'Error desconocido'}
+          </p>
+          <button
+            onclick="window.location.reload()"
+            style="
+              background-color: #4299e1;
+              color: white;
+              padding: 10px 20px;
+              border-radius: 8px;
+              border: none;
+              font-size: 16px;
+              cursor: pointer;
+            "
+          >
+            Recargar página
+          </button>
+          <details style="margin-top: 20px; text-align: left;">
+            <summary style="cursor: pointer; color: #718096;">
+              Ver detalles técnicos
+            </summary>
+            <pre style="
+              font-size: 12px;
+              overflow: auto;
+              background-color: #f7fafc;
+              padding: 10px;
+              border-radius: 5px;
+              margin-top: 10px;
+              white-space: pre-wrap;
+              word-wrap: break-word;
+            ">${error.stack || error.toString()}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
 }
