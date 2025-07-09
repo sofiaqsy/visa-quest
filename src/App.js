@@ -311,7 +311,7 @@ function App() {
                 <NameSetup onComplete={handleNameComplete} />
               )}
               {currentScreen === 'mood' && (
-                <MoodCheck userName={userName} />
+                <MoodCheck userName={userName} onMoodComplete={handleMoodComplete} />
               )}
               {currentScreen === 'dashboard' && (
                 <Dashboard />
