@@ -1,10 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { auth } from '../firebase/config';
-import { 
-  signInAnonymously,
-  onAuthStateChanged,
-  signOut as firebaseSignOut
-} from 'firebase/auth';
 
 const AuthContext = createContext({});
 
@@ -22,39 +16,63 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    console.log('AuthProvider: Setting up auth state listener');
+    console.log('AuthProvider: Initializing...');
     
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('AuthProvider: Auth state changed', user?.uid);
-      
-      if (!user) {
-        // Auto sign in anonymously if no user
-        try {
-          console.log('AuthProvider: No user, signing in anonymously');
-          const result = await signInAnonymously(auth);
-          console.log('AuthProvider: Anonymous sign in successful', result.user.uid);
-          setCurrentUser(result.user);
-        } catch (error) {
-          console.error('AuthProvider: Anonymous sign in failed', error);
-          setError(error.message);
+    // Simulate authentication without Firebase for now
+    const initAuth = async () => {
+      try {
+        // Check if user exists in localStorage
+        const savedUserId = localStorage.getItem('visa-quest-user-id');
+        
+        if (savedUserId) {
+          // Simulate user object
+          setCurrentUser({
+            uid: savedUserId,
+            isAnonymous: true
+          });
+        } else {
+          // Create new anonymous user
+          const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          localStorage.setItem('visa-quest-user-id', newUserId);
+          
+          setCurrentUser({
+            uid: newUserId,
+            isAnonymous: true
+          });
         }
-      } else {
-        setCurrentUser(user);
+        
+        console.log('AuthProvider: Auth initialized');
+      } catch (error) {
+        console.error('AuthProvider: Error initializing auth', error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
-    });
+    };
 
-    return unsubscribe;
+    // Add a small delay to prevent race conditions
+    setTimeout(() => {
+      initAuth();
+    }, 500);
   }, []);
 
   // Guest mode (already using anonymous auth)
   const continueAsGuest = async () => {
     try {
       setError('');
-      const result = await signInAnonymously(auth);
-      setCurrentUser(result.user);
-      return result.user;
+      
+      // User is already set up in the useEffect
+      if (!currentUser) {
+        const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('visa-quest-user-id', newUserId);
+        
+        setCurrentUser({
+          uid: newUserId,
+          isAnonymous: true
+        });
+      }
+      
+      return currentUser;
     } catch (error) {
       setError(error.message);
       throw error;
@@ -64,8 +82,8 @@ export const AuthProvider = ({ children }) => {
   // Sign out
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth);
       // Clear all local storage data
+      localStorage.removeItem('visa-quest-user-id');
       localStorage.removeItem('visa-quest-user-name');
       localStorage.removeItem('visa-quest-has-seen-welcome');
       localStorage.removeItem('visa-quest-daily-mood');
@@ -75,6 +93,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('visa-quest-preferences');
       
       setCurrentUser(null);
+      window.location.href = '/';
     } catch (error) {
       setError(error.message);
       throw error;
