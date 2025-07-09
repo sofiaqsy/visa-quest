@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
-// Test 1: Add React Router
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
+// Test 2: Add Firebase - start with just the config
+import { initializeApp } from 'firebase/app';
+import { getDatabase } from 'firebase/database';
+
+// Firebase config (testing with minimal setup)
+const firebaseConfig = {
+  apiKey: "test-key",
+  authDomain: "test.firebaseapp.com",
+  databaseURL: "https://test.firebaseio.com",
+  projectId: "test-project",
+  storageBucket: "test.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
+};
 
 // Keep other imports commented for now
 // import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -10,7 +24,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 // import PWAInstallButton, { OfflineIndicator, InstallPrompt } from './components/PWAInstallButton';
 // import { moodService, userService, analyticsService } from './firebase/services';
 
-// Test component
 const TestComponent = () => {
   return (
     <div style={{ padding: '20px', backgroundColor: '#e6f7ff', borderRadius: '10px', margin: '20px 0' }}>
@@ -20,13 +33,25 @@ const TestComponent = () => {
   );
 };
 
-// Simple test app with Router
 function App() {
   const [step, setStep] = useState(0);
   const [routerWorks, setRouterWorks] = useState(false);
+  const [firebaseWorks, setFirebaseWorks] = useState('testing');
   
   useEffect(() => {
     console.log('App mounted');
+    
+    // Test Firebase initialization
+    try {
+      console.log('Initializing Firebase...');
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      console.log('Firebase initialized:', !!app, !!database);
+      setFirebaseWorks('success');
+    } catch (error) {
+      console.error('Firebase error:', error);
+      setFirebaseWorks('error: ' + error.message);
+    }
     
     const timer = setTimeout(() => {
       setStep(1);
@@ -68,7 +93,7 @@ function App() {
           {step === 0 ? (
             <>
               <p style={{ color: '#4a5568', marginBottom: '30px' }}>
-                Probando React Router...
+                Probando Firebase...
               </p>
               <p style={{ color: '#718096', fontSize: '14px' }}>
                 Verificando componentes...
@@ -80,7 +105,6 @@ function App() {
                 ✅ React funciona correctamente
               </p>
               
-              {/* Test React Router */}
               <button
                 onClick={() => setRouterWorks(true)}
                 style={{
@@ -106,21 +130,21 @@ function App() {
               
               <button
                 onClick={() => {
-                  console.log('Test click!');
-                  alert('¡React funciona! Ahora probando Router...');
+                  alert(`Firebase status: ${firebaseWorks}`);
                 }}
                 style={{
-                  backgroundColor: '#4299e1',
+                  backgroundColor: '#f59e0b',
                   color: 'white',
                   padding: '12px 24px',
                   borderRadius: '8px',
                   border: 'none',
                   fontSize: '16px',
                   cursor: 'pointer',
-                  width: '100%'
+                  width: '100%',
+                  marginBottom: '10px'
                 }}
               >
-                Probar interacción básica
+                Ver estado de Firebase
               </button>
             </>
           )}
@@ -140,8 +164,8 @@ function App() {
             Estado actual:
           </h3>
           <p>✅ React: Funcionando</p>
-          <p>🔄 React Router: {routerWorks ? '✅ Funcionando' : 'Pendiente...'}</p>
-          <p>⏳ Firebase: No probado</p>
+          <p>✅ React Router: Funcionando</p>
+          <p>🔄 Firebase: {firebaseWorks}</p>
           <p>⏳ Componentes: No probado</p>
         </div>
       </div>
