@@ -1,0 +1,156 @@
+.mood-check-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.mood-check-content {
+  background: white;
+  border-radius: 20px;
+  padding: 40px 30px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mood-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.mood-emoji {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 20px;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.mood-header h1 {
+  font-size: 28px;
+  color: #2d3748;
+  margin: 0 0 10px 0;
+  font-weight: 700;
+}
+
+.mood-subtitle {
+  color: #718096;
+  font-size: 16px;
+  margin: 0;
+}
+
+.mood-question {
+  text-align: center;
+  font-size: 20px;
+  color: #2d3748;
+  margin-bottom: 30px;
+  font-weight: 600;
+}
+
+.mood-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.mood-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.mood-option:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+  transform: translateX(5px);
+}
+
+.mood-option.selected {
+  background: #eef2ff;
+  border-color: #667eea;
+  transform: translateX(5px);
+}
+
+.mood-option-emoji {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.mood-option-content {
+  flex: 1;
+}
+
+.mood-option h3 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.mood-option p {
+  margin: 0;
+  font-size: 14px;
+  color: #718096;
+}
+
+.mood-footer {
+  text-align: center;
+  color: #a0aec0;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .mood-check-content {
+    padding: 30px 20px;
+  }
+  
+  .mood-header h1 {
+    font-size: 24px;
+  }
+  
+  .mood-question {
+    font-size: 18px;
+  }
+  
+  .mood-option {
+    padding: 14px 16px;
+  }
+  
+  .mood-option-emoji {
+    font-size: 28px;
+  }
+}
