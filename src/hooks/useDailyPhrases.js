@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { database } from '../config/firebase';
-import { ref, onValue, get } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 
 export const useDailyPhrases = (mood) => {
   const [phrases, setPhrases] = useState([]);
