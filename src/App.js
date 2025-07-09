@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginForm from './components/Auth/LoginForm';
 import Dashboard from './components/Dashboard/Dashboard';
 import MoodCheck from './components/MoodCheck/MoodCheck';
-import { registerSW, requestNotificationPermission } from './hooks/usePWA';
 import PWAInstallButton, { OfflineIndicator, InstallPrompt } from './components/PWAInstallButton';
 
 // Welcome Screen Component
@@ -204,13 +203,13 @@ function App() {
     // Initialize app
     const initApp = async () => {
       try {
-        // Register service worker for PWA
-        await registerSW();
+        // Simple initialization without service worker for now
+        console.log('App initializing...');
         
-        // Request notification permission
-        await requestNotificationPermission();
-        
-        setIsReady(true);
+        // Add a small delay to ensure everything loads
+        setTimeout(() => {
+          setIsReady(true);
+        }, 1000);
       } catch (error) {
         console.error('App initialization error:', error);
         setIsReady(true); // Continue anyway
@@ -231,7 +230,6 @@ function App() {
           {/* PWA Components */}
           <OfflineIndicator />
           <InstallPrompt />
-          <PWAInstallButton />
           
           {/* Routes */}
           <Routes>
@@ -439,6 +437,8 @@ const styles = `
 `;
 
 // Inject styles
-const styleSheet = document.createElement("style");
-styleSheet.innerText = styles;
-document.head.appendChild(styleSheet);
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = styles;
+  document.head.appendChild(styleSheet);
+}
