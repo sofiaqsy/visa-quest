@@ -22,7 +22,7 @@ function App() {
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, []);
+  }, []); // Remove step dependency to fix ESLint error
   
   return (
     <div style={{
