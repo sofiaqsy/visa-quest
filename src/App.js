@@ -7,7 +7,7 @@ import './index.css';
 // Simple Auth Context
 const AuthContext = React.createContext({});
 
-export const useAuth = () => {
+const useAuth = () => {
   const context = React.useContext(AuthContext);
   return context || {};
 };
@@ -326,5 +326,5 @@ function App() {
 
 export default App;
 
-// Export the context hook
+// Export the context and hook
 export { AuthContext, useAuth };
