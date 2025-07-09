@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#667eea" />
     <meta
       name="description"
@@ -50,6 +50,64 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="referrer" content="no-referrer-when-downgrade">
     
+    <!-- Mobile Fix Styles -->
+    <style>
+      * {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow-x: hidden;
+      }
+      
+      #root {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+      }
+      
+      input, textarea {
+        -webkit-user-select: text;
+        -khtml-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+        user-select: text;
+      }
+      
+      /* Loading indicator */
+      .app-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: linear-gradient(to bottom right, #ebf8ff, #f3e8ff);
+      }
+      
+      .app-loading-content {
+        text-align: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      .app-loading-icon {
+        font-size: 3rem;
+        animation: pulse 2s infinite;
+      }
+      
+      @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+      }
+    </style>
+    
     <title>VisaQuest - Tu aventura hacia Canadá</title>
   </head>
   <body>
@@ -60,10 +118,24 @@
         <p>Por favor, habilita JavaScript en tu navegador e intenta nuevamente.</p>
       </div>
     </noscript>
-    <div id="root"></div>
+    
+    <!-- Loading indicator while React loads -->
+    <div id="root">
+      <div class="app-loading">
+        <div class="app-loading-content">
+          <div class="app-loading-icon">✨</div>
+          <p style="color: #4a5568; margin-top: 1rem;">Cargando VisaQuest...</p>
+        </div>
+      </div>
+    </div>
     
     <!-- Register Service Worker -->
     <script>
+      // Basic error logging
+      window.addEventListener('error', function(e) {
+        console.error('Global error:', e.error);
+      });
+      
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js')
